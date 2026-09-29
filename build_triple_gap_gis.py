@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 Generate Triple Synchronized GIS Dashboard with Gap Analysis for Chiang Mai Water Master Plan
-3 Synchronized Maps:
-  1. Water Security Risk Map (5 Pillars / 2,200 Villages)
-  2. Water Master Plan Budget Map (2565-2570 / 35,094.77 MB / 6,312 Projects)
-  3. Budget Gap Analysis Map (Risk vs Budget Alignment / 5 Gap Statuses)
+Features:
+  - 3 Synchronized Maps: Risk (5 Pillars), Budget (65-70), and Gap Analysis
+  - Toggle Village Pins Button (default OFF to keep overview clean & comfortable)
+  - Crisp District Boundaries (คมชัด แยกชัดเจน 25 อำเภอ พร้อมป้ายชื่ออำเภอ)
+  - Google Maps Base Layers with Roadmap & Terrain
 """
 
 import json
@@ -314,6 +315,34 @@ html_template = """<!DOCTYPE html>
       background-color: #ffffff;
     }
 
+    /* Toggle Village Pins Button */
+    .btn-toggle-pins {
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #ffffff;
+      color: #5f6368;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+    .btn-toggle-pins:hover {
+      background: #f1f3f4;
+      color: #202124;
+      border-color: #5f6368;
+    }
+    .btn-toggle-pins.active {
+      background: #e8f0fe;
+      color: #1a73e8;
+      border-color: #aecbfa;
+      box-shadow: 0 1px 3px rgba(26,115,232,0.25);
+    }
+
     .filter-btn-reset {
       height: 32px;
       padding: 0 12px;
@@ -360,7 +389,27 @@ html_template = """<!DOCTYPE html>
     .leaflet-map {
       width: 100%;
       height: 100%;
-      background: #f0f3f6;
+      background: #e5e3df;
+    }
+
+    /* District Labels on Map */
+    .district-label-card {
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #1e293b;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      text-align: center;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .district-sublabel {
+      font-size: 0.62rem;
+      font-weight: 500;
+      color: #64748b;
     }
 
     /* Floating Map Headers / Badges */
@@ -759,6 +808,12 @@ html_template = """<!DOCTYPE html>
         <option value="5">🌲 ด้าน 5: ฟื้นฟูป่าต้นน้ำ</option>
       </select>
 
+      <!-- Toggle Village Pins Button (Default: OFF) -->
+      <button class="btn-toggle-pins" id="btnTogglePins" onclick="toggleVillagePins()" title="เปิด/ปิด การแสดงหมุด 2,200 หมู่บ้าน">
+        <span class="material-symbols-outlined" style="font-size:16px;">pin_drop</span>
+        <span id="txtTogglePins">แสดงหมุดหมู่บ้าน (ปิดอยู่)</span>
+      </button>
+
       <!-- Reset Button -->
       <button class="filter-btn-reset" onclick="resetToOverview()" title="ล้างตัวกรองและกลับสู่ภาพรวม">
         <span class="material-symbols-outlined" style="font-size:16px;">refresh</span>
@@ -874,6 +929,7 @@ html_template = """<!DOCTYPE html>
     let villagePointsRisk = null, villagePointsBudget = null, villagePointsGap = null;
     
     let activePulseRisk = null, activePulseBudget = null, activePulseGap = null;
+    let showVillages = false; // Default: OFF (Clean overview, no scary clusters)
     let isSyncing = false;
     let cmBounds;
 
@@ -1040,21 +1096,34 @@ html_template = """<!DOCTYPE html>
     }
 
     /* ========================================================= */
-    /* RENDER ALL GIS LAYERS                                     */
+    /* RENDER ALL GIS LAYERS WITH CLEAR DISTRICT BOUNDARIES     */
     /* ========================================================= */
     function renderAllLayers() {
-      // 1. DISTRICTS LAYER
+      // 1. DISTRICTS LAYER WITH DISTINCT BOUNDARY OUTLINES
       const distRiskLayer = L.geoJSON(DISTRICTS_DATA, {
         style: (feature) => ({
           fillColor: getDistrictRiskColor(feature.properties.high_risk_total || 0),
           fillOpacity: 0.65,
-          color: '#ffffff',
-          weight: 1.5
+          color: '#1e293b', // Crisp Solid Dark Boundary Outline
+          weight: 2.2,
+          opacity: 0.95
         }),
         onEachFeature: (feature, layer) => {
           const name = feature.properties.amp_th;
           districtLayersRisk[name] = layer;
-          layer.bindTooltip(`<b>อ.${name}</b><br>เสี่ยงสูง ${feature.properties.high_risk_total || 0} จุด`, { direction: 'center', className: 'map-label' });
+          
+          // District Name Badge
+          layer.bindTooltip(
+            `<div class="district-label-card"><b>อ.${name}</b><div class="district-sublabel">เสี่ยงสูง ${feature.properties.high_risk_total || 0} จุด</div></div>`,
+            { permanent: false, direction: 'center', opacity: 0.95 }
+          );
+
+          layer.on('mouseover', (e) => {
+            e.target.setStyle({ weight: 3.5, color: '#000000', fillOpacity: 0.85 });
+          });
+          layer.on('mouseout', (e) => {
+            distRiskLayer.resetStyle(e.target);
+          });
           layer.on('click', () => selectDistrict(name));
         }
       }).addTo(mapRisk);
@@ -1063,14 +1132,26 @@ html_template = """<!DOCTYPE html>
         style: (feature) => ({
           fillColor: getDistrictBudgetColor(feature.properties.total_budget || 0),
           fillOpacity: 0.7,
-          color: '#ffffff',
-          weight: 1.5
+          color: '#1e293b', // Crisp Solid Dark Boundary Outline
+          weight: 2.2,
+          opacity: 0.95
         }),
         onEachFeature: (feature, layer) => {
           const name = feature.properties.amp_th;
           districtLayersBudget[name] = layer;
           const bgText = Number(feature.properties.total_budget || 0).toLocaleString('th-TH', {maximumFractionDigits:1});
-          layer.bindTooltip(`<b>อ.${name}</b><br>${bgText} ลบ.`, { direction: 'center', className: 'map-label' });
+          
+          layer.bindTooltip(
+            `<div class="district-label-card"><b>อ.${name}</b><div class="district-sublabel">${bgText} ลบ. (${feature.properties.total_projects || 0} โครงการ)</div></div>`,
+            { permanent: false, direction: 'center', opacity: 0.95 }
+          );
+
+          layer.on('mouseover', (e) => {
+            e.target.setStyle({ weight: 3.5, color: '#000000', fillOpacity: 0.85 });
+          });
+          layer.on('mouseout', (e) => {
+            distBudgetLayer.resetStyle(e.target);
+          });
           layer.on('click', () => selectDistrict(name));
         }
       }).addTo(mapBudget);
@@ -1079,27 +1160,40 @@ html_template = """<!DOCTYPE html>
         style: (feature) => ({
           fillColor: getGapColor(feature.properties.gap_status),
           fillOpacity: 0.75,
-          color: '#ffffff',
-          weight: 1.5
+          color: '#1e293b', // Crisp Solid Dark Boundary Outline
+          weight: 2.2,
+          opacity: 0.95
         }),
         onEachFeature: (feature, layer) => {
           const name = feature.properties.amp_th;
           districtLayersGap[name] = layer;
           const status = feature.properties.gap_status || '🟢 สมดุล';
-          layer.bindTooltip(`<b>อ.${name}</b><br>${status.split(' - ')[0]}`, { direction: 'center', className: 'map-label' });
+          
+          layer.bindTooltip(
+            `<div class="district-label-card"><b>อ.${name}</b><div class="district-sublabel">${status.split(' - ')[0]}</div></div>`,
+            { permanent: false, direction: 'center', opacity: 0.95 }
+          );
+
+          layer.on('mouseover', (e) => {
+            e.target.setStyle({ weight: 3.5, color: '#000000', fillOpacity: 0.85 });
+          });
+          layer.on('mouseout', (e) => {
+            distGapLayer.resetStyle(e.target);
+          });
           layer.on('click', () => selectDistrict(name));
         }
       }).addTo(mapGap);
 
       cmBounds = distRiskLayer.getBounds();
 
-      // 2. SUBDISTRICTS LAYER GROUP
+      // 2. SUBDISTRICTS LAYER GROUP (Clean dashed boundary when zooming)
       subdistrictGroupRisk = L.geoJSON(SUBDISTRICTS_DATA, {
         style: (feature) => ({
           fillColor: getDistrictRiskColor(feature.properties.high_risk_total || 0),
           fillOpacity: 0.55,
-          color: '#ffffff',
-          weight: 1.2
+          color: '#334155',
+          weight: 1.5,
+          dashArray: '3, 3'
         }),
         onEachFeature: (feature, layer) => {
           const p = feature.properties;
@@ -1112,8 +1206,9 @@ html_template = """<!DOCTYPE html>
         style: (feature) => ({
           fillColor: getDistrictBudgetColor(feature.properties.total_budget || 0),
           fillOpacity: 0.6,
-          color: '#ffffff',
-          weight: 1.2
+          color: '#334155',
+          weight: 1.5,
+          dashArray: '3, 3'
         }),
         onEachFeature: (feature, layer) => {
           const p = feature.properties;
@@ -1127,8 +1222,9 @@ html_template = """<!DOCTYPE html>
         style: (feature) => ({
           fillColor: getGapColor(feature.properties.gap_status),
           fillOpacity: 0.7,
-          color: '#ffffff',
-          weight: 1.2
+          color: '#334155',
+          weight: 1.5,
+          dashArray: '3, 3'
         }),
         onEachFeature: (feature, layer) => {
           const p = feature.properties;
@@ -1138,7 +1234,22 @@ html_template = """<!DOCTYPE html>
         }
       });
 
-      // 3. VILLAGES PINS LAYER
+      // 3. VILLAGES PINS LAYER (Controlled by showVillages flag)
+      renderVillagePins();
+    }
+
+    function toggleVillagePins() {
+      showVillages = !showVillages;
+      const btn = document.getElementById('btnTogglePins');
+      const txt = document.getElementById('txtTogglePins');
+      
+      if (showVillages) {
+        btn.classList.add('active');
+        txt.textContent = 'ซ่อนหมุดหมู่บ้าน (เปิดอยู่)';
+      } else {
+        btn.classList.remove('active');
+        txt.textContent = 'แสดงหมุดหมู่บ้าน (ปิดอยู่)';
+      }
       renderVillagePins();
     }
 
@@ -1146,6 +1257,11 @@ html_template = """<!DOCTYPE html>
       if (villagePointsRisk) mapRisk.removeLayer(villagePointsRisk);
       if (villagePointsBudget) mapBudget.removeLayer(villagePointsBudget);
       if (villagePointsGap) mapGap.removeLayer(villagePointsGap);
+
+      // If user turned off pins and not in village level, do not render to keep overview clean
+      if (!showVillages && selectedVillageId === 'all' && selectedDistrict === 'all') {
+        return;
+      }
 
       villagePointsRisk = L.layerGroup();
       villagePointsBudget = L.layerGroup();
@@ -1160,7 +1276,7 @@ html_template = """<!DOCTYPE html>
         if (selectedSubdistrict !== 'all' && p.subdistrict !== selectedSubdistrict) return;
         if (selectedPillar !== 'all') {
           const pScore = p[`p${selectedPillar}_score`];
-          if (pScore === 1) return; // filter low if looking for problems
+          if (pScore === 1) return;
         }
 
         const color = getVillageColor(p.total_score || 0);
@@ -1685,9 +1801,9 @@ html_template = """<!DOCTYPE html>
         const layer = districtLayersGap[dName];
         const status = layer.feature.properties.gap_status || '';
         if (val === 'all' || status.includes(val) || val.includes(status.split(' - ')[0])) {
-          layer.setStyle({ fillOpacity: 0.75, opacity: 1 });
+          layer.setStyle({ fillOpacity: 0.75, opacity: 1, color: '#1e293b', weight: 2.2 });
         } else {
-          layer.setStyle({ fillOpacity: 0.1, opacity: 0.2 });
+          layer.setStyle({ fillOpacity: 0.08, opacity: 0.2, color: '#94a3b8', weight: 1 });
         }
       });
     }
@@ -1741,8 +1857,11 @@ html_content = html_content.replace('__SUBDISTRICTS_DATA__', subdistricts_json_s
 html_content = html_content.replace('__VILLAGES_DATA__', villages_json_str)
 html_content = html_content.replace('__SUMMARY_DATA__', dash_data_json_str)
 
-output_path = 'ChiangMai_Water_Triple_Gap_GIS_Dashboard.html'
-with open(output_path, 'w', encoding='utf-8') as f:
+# Write to both ChiangMai_Water_Triple_Gap_GIS_Dashboard.html and index.html
+with open('ChiangMai_Water_Triple_Gap_GIS_Dashboard.html', 'w', encoding='utf-8') as f:
     f.write(html_content)
 
-print(f"Successfully generated {output_path} (Size: {len(html_content):,} bytes)")
+with open('index.html', 'w', encoding='utf-8') as f:
+    f.write(html_content)
+
+print(f"Successfully generated ChiangMai_Water_Triple_Gap_GIS_Dashboard.html and index.html (Size: {len(html_content):,} bytes)")
