@@ -3,11 +3,12 @@
 """
 Generate Triple Synchronized GIS Dashboard with Gap Analysis for Chiang Mai Water Master Plan
 Features:
+  - 100% Mobile & Tablet Compatible (Instant Tab Switcher & Full Responsive Height)
   - 3 Synchronized Maps: Risk (5 Pillars), Budget (65-70), and Gap Analysis
   - Permanent On-Map District Labels with Live Risk Counts and Budget (แบบดั้งเดิม)
   - Toggle Village Pins Button (default OFF to keep overview clean & comfortable)
   - Crisp District Boundaries (เส้นขอบชัดเจน แยก 25 อำเภอ)
-  - Google Maps Base Layers
+  - Google Maps Base Layers (Multi-subdomain high speed)
 """
 
 import json
@@ -84,7 +85,7 @@ html_template = """<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>ระบบสารสนเทศภูมิศาสตร์ 3 แผนที่คู่ขนาน (ความเสี่ยง vs งบประมาณ vs Gap Analysis) จ.เชียงใหม่</title>
   
   <!-- Google Fonts & Material Icons -->
@@ -93,9 +94,9 @@ html_template = """<!DOCTYPE html>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
   
-  <!-- Leaflet CSS & JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Leaflet CSS & JS (Mobile & Proxy Safe CDN) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   
   <style>
     :root {
@@ -111,7 +112,18 @@ html_template = """<!DOCTYPE html>
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Prompt', 'Google Sans', sans-serif; }
-    body { background: var(--bg); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    
+    html, body {
+      height: 100%;
+      min-height: 100%;
+      height: 100dvh;
+      background: var(--bg);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
 
     /* Remove focus outlines & rectangles */
     path.leaflet-interactive:focus { outline: none !important; }
@@ -122,26 +134,26 @@ html_template = """<!DOCTYPE html>
     header {
       background: #ffffff;
       border-bottom: 1px solid var(--border);
-      padding: 8px 20px;
+      padding: 8px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       z-index: 1000;
       box-shadow: 0 1px 3px rgba(60,64,67, 0.08);
       flex-shrink: 0;
-      gap: 12px;
+      gap: 10px;
     }
     .header-brand { display: flex; align-items: center; gap: 10px; }
     .brand-icon {
-      width: 38px; height: 38px;
+      width: 36px; height: 36px;
       background: linear-gradient(135deg, #1a73e8, #7c3aed);
       border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
       color: #fff; font-size: 20px;
       flex-shrink: 0;
     }
-    .brand-title { font-size: 0.98rem; font-weight: 700; color: #1a73e8; line-height: 1.2; }
-    .brand-sub { font-size: 0.73rem; color: var(--text-sub); }
+    .brand-title { font-size: 0.95rem; font-weight: 700; color: #1a73e8; line-height: 1.2; }
+    .brand-sub { font-size: 0.72rem; color: var(--text-sub); }
 
     /* Page Switcher Dropdown & Nav */
     .nav-switcher {
@@ -170,15 +182,15 @@ html_template = """<!DOCTYPE html>
     }
     .nav-dropdown-menu {
       position: absolute;
-      top: 50px;
-      left: 20px;
+      top: 48px;
+      left: 16px;
       background: #ffffff;
       border: 1px solid var(--border);
       border-radius: 12px;
       box-shadow: var(--shadow-lg);
       padding: 8px 0;
       min-width: 280px;
-      z-index: 2000;
+      z-index: 2500;
       display: none;
     }
     .nav-dropdown-menu.show {
@@ -204,7 +216,7 @@ html_template = """<!DOCTYPE html>
       font-weight: 700;
     }
 
-    /* Layout View Switcher Pills */
+    /* Layout View Switcher Pills (Desktop) */
     .layout-switcher {
       display: flex;
       align-items: center;
@@ -249,16 +261,70 @@ html_template = """<!DOCTYPE html>
     .kpi-chip strong { color: #1a73e8; font-weight: 700; }
     .kpi-chip.chip-gap-crisis strong { color: #d93025; }
 
+    /* Mobile Map Switcher Tab Bar (Visible on Mobile <= 768px) */
+    .mobile-map-tabs {
+      display: none;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 6px 10px;
+      overflow-x: auto;
+      white-space: nowrap;
+      gap: 6px;
+      z-index: 950;
+      flex-shrink: 0;
+      -webkit-overflow-scrolling: touch;
+    }
+    .mobile-tab-btn {
+      flex: 1;
+      min-width: 90px;
+      padding: 6px 10px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: #f8f9fa;
+      color: #5f6368;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .mobile-tab-btn.active {
+      background: #e8f0fe;
+      color: #1a73e8;
+      border-color: #1a73e8;
+      font-weight: 700;
+      box-shadow: 0 1px 4px rgba(26,115,232,0.25);
+    }
+
+    /* Collapsible Filter Toggle for Mobile */
+    .filter-toggle-mobile {
+      display: none;
+      background: #f8f9fa;
+      border-bottom: 1px solid var(--border);
+      padding: 6px 14px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #1a73e8;
+      cursor: pointer;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 920;
+      flex-shrink: 0;
+    }
+
     /* Filter Action Bar (Top) */
     .filter-bar {
       background: #ffffff;
       border-bottom: 1px solid var(--border);
-      padding: 6px 20px;
+      padding: 6px 16px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 6px;
       z-index: 900;
       flex-shrink: 0;
     }
@@ -266,7 +332,7 @@ html_template = """<!DOCTYPE html>
     
     .search-input-wrap {
       position: relative;
-      width: 180px;
+      width: 170px;
     }
     .search-input-wrap input {
       width: 100%;
@@ -368,10 +434,12 @@ html_template = """<!DOCTYPE html>
     /* Main Triple Map Container */
     .map-main-wrapper {
       position: relative;
-      flex: 1;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      height: 100%;
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
-      height: calc(100vh - 96px);
       overflow: hidden;
       background: #e5e3df;
       transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -381,6 +449,7 @@ html_template = """<!DOCTYPE html>
       position: relative;
       width: 100%;
       height: 100%;
+      min-height: 200px;
       border-right: 2px solid #ffffff;
     }
     .map-box:last-child {
@@ -390,6 +459,7 @@ html_template = """<!DOCTYPE html>
     .leaflet-map {
       width: 100%;
       height: 100%;
+      min-height: 100%;
       background: #e5e3df;
     }
 
@@ -456,19 +526,19 @@ html_template = """<!DOCTYPE html>
     /* Floating Map Headers / Badges */
     .map-header-badge {
       position: absolute;
-      top: 12px;
-      left: 12px;
+      top: 10px;
+      left: 10px;
       z-index: 800;
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(8px);
       border: 1px solid rgba(0,0,0,0.12);
       border-radius: 8px;
-      padding: 6px 12px;
+      padding: 5px 10px;
       box-shadow: var(--shadow);
       pointer-events: none;
     }
-    .badge-title { font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-    .badge-sub { font-size: 0.68rem; color: var(--text-sub); margin-top: 2px; }
+    .badge-title { font-size: 0.78rem; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+    .badge-sub { font-size: 0.66rem; color: var(--text-sub); margin-top: 1px; }
 
     .badge-risk .badge-title { color: #c5221f; }
     .badge-budget .badge-title { color: #1a73e8; }
@@ -477,29 +547,29 @@ html_template = """<!DOCTYPE html>
     /* Map Legends (Bottom Right of each map) */
     .map-legend {
       position: absolute;
-      bottom: 64px;
-      right: 12px;
+      bottom: 58px;
+      right: 10px;
       z-index: 800;
       background: rgba(255, 255, 255, 0.94);
       backdrop-filter: blur(6px);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 0.68rem;
+      padding: 6px 8px;
+      font-size: 0.66rem;
       box-shadow: var(--shadow);
-      max-width: 220px;
+      max-width: 200px;
     }
-    .legend-title { font-weight: 700; margin-bottom: 4px; color: #202124; }
-    .legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
-    .legend-color { width: 12px; height: 10px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+    .legend-title { font-weight: 700; margin-bottom: 3px; color: #202124; }
+    .legend-row { display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
+    .legend-color { width: 10px; height: 9px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
 
     /* SMART FLOATING BOTTOM DOCK */
     .smart-dock {
       position: absolute;
-      bottom: 12px;
+      bottom: 10px;
       left: 50%;
       transform: translateX(-50%);
-      width: min(94%, 960px);
+      width: min(95%, 960px);
       background: #ffffff;
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -509,12 +579,12 @@ html_template = """<!DOCTYPE html>
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .dock-summary-bar {
-      padding: 8px 14px;
+      padding: 7px 12px;
       background: #ffffff;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 8px;
       cursor: pointer;
       user-select: none;
       flex-wrap: wrap;
@@ -522,7 +592,7 @@ html_template = """<!DOCTYPE html>
     .dock-title-group {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
     }
     
@@ -531,7 +601,7 @@ html_template = """<!DOCTYPE html>
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      font-size: 0.84rem;
+      font-size: 0.82rem;
       font-weight: 700;
       color: #202124;
     }
@@ -552,7 +622,7 @@ html_template = """<!DOCTYPE html>
     }
     .bc-separator {
       color: #80868b;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
     }
 
     .dock-stat-pill {
@@ -634,13 +704,13 @@ html_template = """<!DOCTYPE html>
       overflow-y: auto;
     }
     .dock-inner-padding {
-      padding: 12px 16px;
+      padding: 10px 14px;
     }
 
     /* FLOATING BACK TO OVERVIEW BUTTON (Top Center) */
     .floating-back-bar {
       position: absolute;
-      top: 12px;
+      top: 10px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 850;
@@ -651,8 +721,8 @@ html_template = """<!DOCTYPE html>
       color: #1a73e8;
       border: 1px solid #aecbfa;
       border-radius: 20px;
-      padding: 6px 16px;
-      font-size: 0.78rem;
+      padding: 5px 14px;
+      font-size: 0.76rem;
       font-weight: 700;
       cursor: pointer;
       box-shadow: var(--shadow-lg);
@@ -668,8 +738,8 @@ html_template = """<!DOCTYPE html>
 
     /* Pulsing Beacon Animation */
     .pulsing-beacon {
-      width: 22px;
-      height: 22px;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
       background: rgba(26, 115, 232, 0.85);
       border: 2px solid #ffffff;
@@ -699,13 +769,13 @@ html_template = """<!DOCTYPE html>
     .gap-table th {
       background: #f1f3f4;
       color: #3c4043;
-      padding: 6px 8px;
+      padding: 5px 8px;
       text-align: left;
       font-weight: 600;
       border-bottom: 1px solid var(--border);
     }
     .gap-table td {
-      padding: 6px 8px;
+      padding: 5px 8px;
       border-bottom: 1px solid #f1f3f4;
       color: #202124;
     }
@@ -713,16 +783,90 @@ html_template = """<!DOCTYPE html>
       background: #f8fafd;
     }
 
-    /* Responsive */
-    @media (max-width: 1024px) {
-      .map-main-wrapper {
-        grid-template-columns: 1fr;
-        grid-template-rows: 1fr 1fr 1fr;
+    /* ========================================================= */
+    /* RESPONSIVE MOBILE OPTIMIZATIONS (Smart Phone / Tablet)    */
+    /* ========================================================= */
+    @media (max-width: 768px) {
+      header {
+        padding: 6px 12px;
       }
-      .map-box {
+      .brand-title { font-size: 0.86rem; }
+      .brand-sub { display: none; }
+      .header-kpis { display: none; }
+      .layout-switcher { display: none; }
+
+      .mobile-map-tabs {
+        display: flex;
+      }
+      .filter-toggle-mobile {
+        display: flex;
+      }
+      .filter-bar {
+        display: none; /* Collapsed by default on mobile */
+        padding: 8px 12px;
+      }
+      .filter-bar.show-mobile {
+        display: flex;
+      }
+      .search-input-wrap {
+        width: 100%;
+      }
+      .filter-select {
+        flex: 1 1 calc(50% - 4px);
+        min-width: 130px;
+      }
+
+      /* Mobile Map View Modes */
+      .map-main-wrapper.mobile-single-view {
+        display: block;
+        height: 100%;
+        flex: 1 1 auto;
+      }
+      .map-main-wrapper.mobile-single-view .map-box {
+        display: none;
+        height: 100%;
+        min-height: 100%;
         border-right: none;
-        border-bottom: 2px solid #ffffff;
       }
+      .map-main-wrapper.mobile-single-view .map-box.mobile-active {
+        display: block;
+        height: 100%;
+        min-height: 100%;
+      }
+
+      .map-main-wrapper.mobile-scroll-view {
+        display: block;
+        overflow-y: auto;
+        height: 100%;
+        flex: 1 1 auto;
+      }
+      .map-main-wrapper.mobile-scroll-view .map-box {
+        display: block;
+        height: 380px;
+        min-height: 380px;
+        border-right: none;
+        border-bottom: 4px solid #cbd5e1;
+        margin-bottom: 4px;
+      }
+
+      .smart-dock {
+        width: 96%;
+        bottom: 6px;
+      }
+      .map-legend {
+        bottom: 48px;
+        right: 6px;
+        padding: 5px 6px;
+        font-size: 0.60rem;
+        max-width: 170px;
+      }
+      .map-header-badge {
+        top: 6px;
+        left: 6px;
+        padding: 4px 8px;
+      }
+      .badge-title { font-size: 0.70rem; }
+      .badge-sub { display: none; }
     }
   </style>
 </head>
@@ -735,8 +879,8 @@ html_template = """<!DOCTYPE html>
         <span class="material-symbols-outlined">balance</span>
       </div>
       <div>
-        <div class="brand-title">ระบบวิเคราะห์ช่องว่าง 3 แผนที่คู่ขนาน (Triple Sync GIS)</div>
-        <div class="brand-sub">เปรียบเทียบความเสี่ยง vs งบประมาณ vs Gap Analysis แผนแม่บทน้ำ จ.เชียงใหม่</div>
+        <div class="brand-title">วิเคราะห์ช่องว่าง 3 แผนที่ (Triple Sync GIS)</div>
+        <div class="brand-sub">เปรียบเทียบความเสี่ยง vs งบประมาณ vs Gap Analysis จ.เชียงใหม่</div>
       </div>
     </div>
 
@@ -745,22 +889,22 @@ html_template = """<!DOCTYPE html>
       <div style="position:relative;">
         <button class="nav-dropdown-btn" onclick="toggleNavDropdown(event)">
           <span class="material-symbols-outlined" style="font-size:16px; color:#1a73e8;">apps</span>
-          <span>สลับหน้าแดชบอร์ด</span>
+          <span>สลับหน้า</span>
           <span class="material-symbols-outlined" style="font-size:14px;">arrow_drop_down</span>
         </button>
         <div class="nav-dropdown-menu" id="navDropdownMenu">
-          <a href="index.html" class="nav-menu-item">
-            <span class="material-symbols-outlined" style="color:#1a73e8;">map</span>
-            <div>
-              <div style="font-weight:600;">1. แผนที่คู่ขนาน (Dual GIS)</div>
-              <div style="font-size:0.7rem; color:#5f6368;">เปรียบเทียบความเสี่ยง 5 มิติ vs งบประมาณ</div>
-            </div>
-          </a>
-          <a href="ChiangMai_Water_Triple_Gap_GIS_Dashboard.html" class="nav-menu-item active">
+          <a href="index.html" class="nav-menu-item active">
             <span class="material-symbols-outlined" style="color:#7c3aed;">balance</span>
             <div>
-              <div style="font-weight:700;">2. วิเคราะห์ช่องว่าง 3 แผนที่ (Triple Sync GIS)</div>
+              <div style="font-weight:700;">1. วิเคราะห์ช่องว่าง 3 แผนที่ (Triple Sync GIS)</div>
               <div style="font-size:0.7rem; color:#5f6368;">ความเสี่ยง vs งบประมาณ vs Gap Analysis (หน้านี้)</div>
+            </div>
+          </a>
+          <a href="https://thanapatcommindo-gif.github.io/dataJOB/" class="nav-menu-item" target="_blank">
+            <span class="material-symbols-outlined" style="color:#1a73e8;">map</span>
+            <div>
+              <div style="font-weight:600;">2. แผนที่คู่ขนาน (Dual GIS เดิม)</div>
+              <div style="font-size:0.7rem; color:#5f6368;">เปิดดูโครงการ dataJOB ดั้งเดิม</div>
             </div>
           </a>
           <a href="ChiangMai_Water_Dashboard.html" class="nav-menu-item">
@@ -780,7 +924,7 @@ html_template = """<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- Layout Switcher Pills -->
+      <!-- Desktop Layout Switcher Pills -->
       <div class="layout-switcher">
         <button class="layout-btn active" id="btnLayoutTriple" onclick="setLayoutMode('triple')" title="แสดง 3 แผนที่พร้อมกัน">
           <span class="material-symbols-outlined" style="font-size:14px;">view_column</span> 3 แผนที่
@@ -797,21 +941,46 @@ html_template = """<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- KPI Chips -->
+    <!-- Desktop KPI Chips -->
     <div class="header-kpis">
       <div class="kpi-chip">💰 งบประมาณ: <strong>35,094.77 ลบ.</strong></div>
       <div class="kpi-chip">🚨 จุดเสี่ยงสูง: <strong>1,040 จุด</strong></div>
-      <div class="kpi-chip chip-gap-crisis">⚡ Gap วิกฤติ: <strong>3 อำเภอ (สารภี/สันกำแพง/แม่อาย)</strong></div>
+      <div class="kpi-chip chip-gap-crisis">⚡ Gap วิกฤติ: <strong>3 อำเภอ</strong></div>
     </div>
   </header>
 
+  <!-- Mobile Map Switcher Tab Bar (Shown on Mobile) -->
+  <div class="mobile-map-tabs" id="mobileMapTabs">
+    <button class="mobile-tab-btn active" id="mTabRisk" onclick="switchMobileTab('risk')">
+      <span>🔴 1. ความเสี่ยง 5 ด้าน</span>
+    </button>
+    <button class="mobile-tab-btn" id="mTabBudget" onclick="switchMobileTab('budget')">
+      <span>💰 2. งบประมาณ</span>
+    </button>
+    <button class="mobile-tab-btn" id="mTabGap" onclick="switchMobileTab('gap')">
+      <span>⚖️ 3. Gap Analysis</span>
+    </button>
+    <button class="mobile-tab-btn" id="mTabAll" onclick="switchMobileTab('all')" title="ดูทั้ง 3 แผนที่แบบเลื่อนแนวตั้ง">
+      <span>📱 เลื่อนดู 3 แผนที่</span>
+    </button>
+  </div>
+
+  <!-- Mobile Filter Toggle Bar -->
+  <div class="filter-toggle-mobile" id="filterToggleMobile" onclick="toggleMobileFilters()">
+    <span style="display:flex; align-items:center; gap:5px;">
+      <span class="material-symbols-outlined" style="font-size:16px;">tune</span>
+      <span>ตัวกรอง & ค้นหาอำเภอ/ตำบล</span>
+    </span>
+    <span id="filterToggleIcon" class="material-symbols-outlined" style="font-size:18px;">expand_more</span>
+  </div>
+
   <!-- Filter Action Bar (Top) -->
-  <div class="filter-bar">
+  <div class="filter-bar" id="filterBar">
     <div class="filter-group">
       <!-- Search Input -->
       <div class="search-input-wrap">
         <span class="material-symbols-outlined search-icon">search</span>
-        <input type="text" id="searchInput" placeholder="ค้นหา อำเภอ / ตำบล / หมู่บ้าน..." oninput="handleSearch(this.value)">
+        <input type="text" id="searchInput" placeholder="ค้นหา อำเภอ / ตำบล..." oninput="handleSearch(this.value)">
       </div>
 
       <!-- 3-Tier Drill-down Dropdowns -->
@@ -831,11 +1000,11 @@ html_template = """<!DOCTYPE html>
     <div class="filter-group">
       <!-- Gap Status Filter -->
       <select class="filter-select" id="gapStatusSelect" onchange="handleGapFilter(this.value)">
-        <option value="all">⚖️ ทุกสถานะ Gap Analysis</option>
-        <option value="🚨 เสี่ยงสูงวิกฤติ - งบประมาณไม่เพียงพอ">🚨 เสี่ยงสูงวิกฤติ - งบไม่พอ (18 ตำบล)</option>
-        <option value="⚠️ เสี่ยงสูง - ได้รับงบประมาณต่อเนื่อง">⚠️ เสี่ยงสูง - งบต่อเนื่อง (37 ตำบล)</option>
-        <option value="🟡 เสี่ยงปานกลาง - ควรเพิ่มงบประมาณ">🟡 เสี่ยงปานกลาง - ควรเพิ่มงบ (13 ตำบล)</option>
-        <option value="🔵 งบประมาณสูง - ความเสี่ยงต่ำ (โครงการโครงสร้างพื้นฐานหลัก)">🔵 งบสูง - เสี่ยงต่ำ (57 ตำบล)</option>
+        <option value="all">⚖️ ทุกสถานะ Gap</option>
+        <option value="🚨 เสี่ยงสูงวิกฤติ - งบประมาณไม่เพียงพอ">🚨 วิกฤติ-งบไม่พอ (18 ตำบล)</option>
+        <option value="⚠️ เสี่ยงสูง - ได้รับงบประมาณต่อเนื่อง">⚠️ เสี่ยงสูง-งบต่อเนื่อง (37 ตำบล)</option>
+        <option value="🟡 เสี่ยงปานกลาง - ควรเพิ่มงบประมาณ">🟡 ปานกลาง-ควรเพิ่มงบ (13 ตำบล)</option>
+        <option value="🔵 งบประมาณสูง - ความเสี่ยงต่ำ (โครงการโครงสร้างพื้นฐานหลัก)">🔵 งบสูง-เสี่ยงต่ำ (57 ตำบล)</option>
         <option value="🟢 สมดุลตามเกณฑ์">🟢 สมดุลตามเกณฑ์ (79 ตำบล)</option>
       </select>
 
@@ -852,7 +1021,7 @@ html_template = """<!DOCTYPE html>
       <!-- Toggle Village Pins Button (Default: OFF) -->
       <button class="btn-toggle-pins" id="btnTogglePins" onclick="toggleVillagePins()" title="เปิด/ปิด การแสดงหมุด 2,200 หมู่บ้าน">
         <span class="material-symbols-outlined" style="font-size:16px;">pin_drop</span>
-        <span id="txtTogglePins">แสดงหมุดหมู่บ้าน (ปิดอยู่)</span>
+        <span id="txtTogglePins">หมุดหมู่บ้าน (ปิดอยู่)</span>
       </button>
 
       <!-- Reset Button -->
@@ -870,7 +1039,7 @@ html_template = """<!DOCTYPE html>
     <div class="map-box" id="boxRisk">
       <div id="map-risk" class="leaflet-map"></div>
       <div class="map-header-badge badge-risk">
-        <div class="badge-title"><span class="material-symbols-outlined" style="font-size:16px;">warning</span> 1. แผนที่ความเสี่ยง 5 ด้าน</div>
+        <div class="badge-title"><span class="material-symbols-outlined" style="font-size:15px;">warning</span> 1. แผนที่ความเสี่ยง 5 ด้าน</div>
         <div class="badge-sub">ระดับความรุนแรง 2,200 หมู่บ้าน</div>
       </div>
       <div class="map-legend">
@@ -886,7 +1055,7 @@ html_template = """<!DOCTYPE html>
     <div class="map-box" id="boxBudget">
       <div id="map-budget" class="leaflet-map"></div>
       <div class="map-header-badge badge-budget">
-        <div class="badge-title"><span class="material-symbols-outlined" style="font-size:16px;">payments</span> 2. แผนที่จัดสรรงบประมาณ</div>
+        <div class="badge-title"><span class="material-symbols-outlined" style="font-size:15px;">payments</span> 2. แผนที่จัดสรรงบประมาณ</div>
         <div class="badge-sub">งบแผนแม่บท 65-70 (35.09 พันลบ.)</div>
       </div>
       <div class="map-legend">
@@ -903,15 +1072,15 @@ html_template = """<!DOCTYPE html>
     <div class="map-box" id="boxGap">
       <div id="map-gap" class="leaflet-map"></div>
       <div class="map-header-badge badge-gap">
-        <div class="badge-title"><span class="material-symbols-outlined" style="font-size:16px;">balance</span> 3. แผนที่วิเคราะห์ช่องว่าง (Gap Analysis)</div>
+        <div class="badge-title"><span class="material-symbols-outlined" style="font-size:15px;">balance</span> 3. แผนที่ช่องว่าง (Gap Analysis)</div>
         <div class="badge-sub">วิเคราะห์ความสอดคล้อง เสี่ยง vs งบประมาณ</div>
       </div>
       <div class="map-legend">
-        <div class="legend-title">สถานะช่องว่าง (Gap Status)</div>
+        <div class="legend-title">สถานะช่องว่าง (Gap)</div>
         <div class="legend-row"><span class="legend-color" style="background:#ef4444;"></span> 🚨 เสี่ยงสูงวิกฤติ - งบไม่พอ</div>
         <div class="legend-row"><span class="legend-color" style="background:#f97316;"></span> ⚠️ เสี่ยงสูง - งบต่อเนื่อง</div>
         <div class="legend-row"><span class="legend-color" style="background:#eab308;"></span> 🟡 เสี่ยงปานกลาง - ควรเพิ่มงบ</div>
-        <div class="legend-row"><span class="legend-color" style="background:#3b82f6;"></span> 🔵 งบสูง - เสี่ยงต่ำ (โครงสร้างฯ)</div>
+        <div class="legend-row"><span class="legend-color" style="background:#3b82f6;"></span> 🔵 งบสูง - เสี่ยงต่ำ</div>
         <div class="legend-row"><span class="legend-color" style="background:#22c55e;"></span> 🟢 สมดุลตามเกณฑ์</div>
       </div>
     </div>
@@ -919,8 +1088,8 @@ html_template = """<!DOCTYPE html>
     <!-- FLOATING BACK TO OVERVIEW BUTTON (Top Center) -->
     <div class="floating-back-bar" id="floatingBackBar">
       <button class="btn-floating-back" onclick="resetToOverview()" title="ย้อนกลับไปดูภาพรวมทั้ง 25 อำเภอ">
-        <span class="material-symbols-outlined" style="font-size:18px;">arrow_back</span>
-        <span id="floatingBackText">ย้อนกลับภาพรวม จ.เชียงใหม่</span>
+        <span class="material-symbols-outlined" style="font-size:16px;">arrow_back</span>
+        <span id="floatingBackText">ย้อนกลับภาพรวม</span>
       </button>
     </div>
 
@@ -928,22 +1097,22 @@ html_template = """<!DOCTYPE html>
     <div class="smart-dock" id="smartDock">
       <div class="dock-summary-bar" onclick="toggleDockExpand()">
         <div class="dock-title-group" id="dockTitleGroup">
-          <span class="material-symbols-outlined" style="color:#7c3aed; font-size:20px;">info</span>
+          <span class="material-symbols-outlined" style="color:#7c3aed; font-size:18px;">info</span>
           <div class="dock-breadcrumbs" id="dockBreadcrumbs">
-            <span class="bc-active">📍 จ.เชียงใหม่ (ภาพรวม 25 อำเภอ)</span>
+            <span class="bc-active">📍 จ.เชียงใหม่ (25 อำเภอ)</span>
           </div>
           <span class="dock-stat-pill pill-gap-red" id="dockPillGap">🚨 Gap วิกฤติ 3 อำเภอ</span>
           <span class="dock-stat-pill pill-risk" id="dockPillRisk">🔴 เสี่ยงสูง 1,040 จุด</span>
-          <span class="dock-stat-pill pill-budget" id="dockPillBudget">💰 35,094.77 ลบ. (6,312 โครงการ)</span>
+          <span class="dock-stat-pill pill-budget" id="dockPillBudget">💰 35,094.77 ลบ.</span>
         </div>
         <div class="dock-actions" onclick="event.stopPropagation()">
-          <button class="btn-dock-home" onclick="resetToOverview()" title="กลับสู่ภาพรวมทั้ง 25 อำเภอ">
+          <button class="btn-dock-home" onclick="resetToOverview()" title="กลับสู่ภาพรวม">
             <span class="material-symbols-outlined" style="font-size:14px;">restart_alt</span>
-            <span>กลับภาพรวม</span>
+            <span>ภาพรวม</span>
           </button>
           <button class="btn-toggle-expand" id="btnDockExpand" onclick="toggleDockExpand()">
             <span class="material-symbols-outlined" style="font-size:16px;" id="expandIcon">expand_less</span>
-            <span id="expandText">ดูตาราง Gap 5 มิติ</span>
+            <span id="expandText">ดูตาราง Gap</span>
           </button>
           <button class="btn-close-dock" onclick="closeDock()">
             <span class="material-symbols-outlined" style="font-size:16px;">close</span>
@@ -980,18 +1149,32 @@ html_template = """<!DOCTYPE html>
     let selectedGapFilter = 'all';
     let selectedPillar = 'all';
     let currentLayout = 'triple';
+    let activeMobileTab = 'risk';
 
     window.addEventListener('DOMContentLoaded', () => {
       initMaps();
       populateDropdowns();
       renderAllLayers();
       resetToOverview();
+
+      // Check initial mobile state
+      if (window.innerWidth <= 768) {
+        switchMobileTab('risk');
+      }
+
+      invalidateAllMaps();
     });
 
     function initMaps() {
       const cmCenter = [18.7883, 98.9853];
-      const initialZoom = 9;
-      const googleMapsUrl = 'https://mt1.google.com/vt/lyrs=m&hl=th&x={x}&y={y}&z={z}';
+      const initialZoom = window.innerWidth <= 768 ? 8 : 9;
+      // High-speed parallel Google tile servers
+      const googleMapsUrl = 'https://{s}.google.com/vt/lyrs=m&hl=th&x={x}&y={y}&z={z}';
+      const tileOptions = {
+        maxZoom: 19,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '© Google Maps'
+      };
 
       // 1. Left Map: Risk
       mapRisk = L.map('map-risk', {
@@ -1000,7 +1183,8 @@ html_template = """<!DOCTYPE html>
         zoomControl: false,
         boxZoom: false
       });
-      L.tileLayer(googleMapsUrl, { maxZoom: 18, attribution: '© Google Maps' }).addTo(mapRisk);
+      L.tileLayer(googleMapsUrl, tileOptions).addTo(mapRisk);
+      L.control.zoom({ position: 'topright' }).addTo(mapRisk);
 
       // 2. Center Map: Budget
       mapBudget = L.map('map-budget', {
@@ -1009,7 +1193,8 @@ html_template = """<!DOCTYPE html>
         zoomControl: false,
         boxZoom: false
       });
-      L.tileLayer(googleMapsUrl, { maxZoom: 18, attribution: '© Google Maps' }).addTo(mapBudget);
+      L.tileLayer(googleMapsUrl, tileOptions).addTo(mapBudget);
+      L.control.zoom({ position: 'topright' }).addTo(mapBudget);
 
       // 3. Right Map: Gap
       mapGap = L.map('map-gap', {
@@ -1018,7 +1203,7 @@ html_template = """<!DOCTYPE html>
         zoomControl: false,
         boxZoom: false
       });
-      L.tileLayer(googleMapsUrl, { maxZoom: 18, attribution: '© Google Maps' }).addTo(mapGap);
+      L.tileLayer(googleMapsUrl, tileOptions).addTo(mapGap);
       L.control.zoom({ position: 'topright' }).addTo(mapGap);
 
       // 3-Way Synchronization
@@ -1040,15 +1225,88 @@ html_template = """<!DOCTYPE html>
       syncOtherMaps(mapBudget, [mapRisk, mapGap]);
       syncOtherMaps(mapGap, [mapRisk, mapBudget]);
 
-      window.addEventListener('resize', () => {
+      window.addEventListener('resize', invalidateAllMaps);
+      window.addEventListener('orientationchange', invalidateAllMaps);
+    }
+
+    function invalidateAllMaps() {
+      setTimeout(() => {
         if (mapRisk) mapRisk.invalidateSize();
         if (mapBudget) mapBudget.invalidateSize();
         if (mapGap) mapGap.invalidateSize();
-      });
+      }, 50);
+      setTimeout(() => {
+        if (mapRisk) mapRisk.invalidateSize();
+        if (mapBudget) mapBudget.invalidateSize();
+        if (mapGap) mapGap.invalidateSize();
+      }, 250);
+      setTimeout(() => {
+        if (mapRisk) mapRisk.invalidateSize();
+        if (mapBudget) mapBudget.invalidateSize();
+        if (mapGap) mapGap.invalidateSize();
+      }, 600);
     }
 
     /* ========================================================= */
-    /* LAYOUT SWITCHER                                           */
+    /* MOBILE NAVIGATION & TAB SWITCHING                         */
+    /* ========================================================= */
+    function switchMobileTab(tab) {
+      activeMobileTab = tab;
+      document.querySelectorAll('.mobile-tab-btn').forEach(b => b.classList.remove('active'));
+      
+      const wrapper = document.getElementById('mapWrapper');
+      const boxRisk = document.getElementById('boxRisk');
+      const boxBudget = document.getElementById('boxBudget');
+      const boxGap = document.getElementById('boxGap');
+
+      if (tab === 'all') {
+        const btnAll = document.getElementById('mTabAll');
+        if (btnAll) btnAll.classList.add('active');
+        wrapper.classList.remove('mobile-single-view');
+        wrapper.classList.add('mobile-scroll-view');
+        boxRisk.classList.remove('mobile-active');
+        boxBudget.classList.remove('mobile-active');
+        boxGap.classList.remove('mobile-active');
+        boxRisk.style.display = 'block';
+        boxBudget.style.display = 'block';
+        boxGap.style.display = 'block';
+      } else {
+        wrapper.classList.remove('mobile-scroll-view');
+        wrapper.classList.add('mobile-single-view');
+        
+        boxRisk.classList.remove('mobile-active');
+        boxBudget.classList.remove('mobile-active');
+        boxGap.classList.remove('mobile-active');
+        
+        if (tab === 'risk') {
+          const b = document.getElementById('mTabRisk');
+          if (b) b.classList.add('active');
+          boxRisk.classList.add('mobile-active');
+        } else if (tab === 'budget') {
+          const b = document.getElementById('mTabBudget');
+          if (b) b.classList.add('active');
+          boxBudget.classList.add('mobile-active');
+        } else if (tab === 'gap') {
+          const b = document.getElementById('mTabGap');
+          if (b) b.classList.add('active');
+          boxGap.classList.add('mobile-active');
+        }
+      }
+
+      invalidateAllMaps();
+    }
+
+    function toggleMobileFilters() {
+      const fb = document.getElementById('filterBar');
+      const icon = document.getElementById('filterToggleIcon');
+      fb.classList.toggle('show-mobile');
+      const isShowing = fb.classList.contains('show-mobile');
+      icon.textContent = isShowing ? 'expand_less' : 'expand_more';
+      invalidateAllMaps();
+    }
+
+    /* ========================================================= */
+    /* DESKTOP LAYOUT SWITCHER                                   */
     /* ========================================================= */
     function setLayoutMode(mode) {
       currentLayout = mode;
@@ -1085,11 +1343,7 @@ html_template = """<!DOCTYPE html>
         boxGap.style.display = 'block';
       }
 
-      setTimeout(() => {
-        if (mapRisk) mapRisk.invalidateSize();
-        if (mapBudget) mapBudget.invalidateSize();
-        if (mapGap) mapGap.invalidateSize();
-      }, 350);
+      invalidateAllMaps();
     }
 
     /* ========================================================= */
@@ -1355,10 +1609,10 @@ html_template = """<!DOCTYPE html>
       
       if (showVillages) {
         btn.classList.add('active');
-        txt.textContent = 'ซ่อนหมุดหมู่บ้าน (เปิดอยู่)';
+        txt.textContent = 'หมุดหมู่บ้าน (เปิดอยู่)';
       } else {
         btn.classList.remove('active');
-        txt.textContent = 'แสดงหมุดหมู่บ้าน (ปิดอยู่)';
+        txt.textContent = 'หมุดหมู่บ้าน (ปิดอยู่)';
       }
       renderVillagePins();
     }
@@ -1502,9 +1756,9 @@ html_template = """<!DOCTYPE html>
       if (layer) {
         const b = layer.getBounds();
         isSyncing = true;
-        mapRisk.fitBounds(b, { padding: [30, 30] });
-        mapBudget.fitBounds(b, { padding: [30, 30] });
-        mapGap.fitBounds(b, { padding: [30, 30] });
+        mapRisk.fitBounds(b, { padding: [25, 25] });
+        mapBudget.fitBounds(b, { padding: [25, 25] });
+        mapGap.fitBounds(b, { padding: [25, 25] });
         isSyncing = false;
       }
 
@@ -1517,7 +1771,7 @@ html_template = """<!DOCTYPE html>
 
       renderVillagePins();
       updateDockForDistrict(name);
-      showFloatingBack('ย้อนกลับภาพรวม จ.เชียงใหม่');
+      showFloatingBack('ย้อนกลับภาพรวม');
     }
 
     function selectSubdistrict(district, subdistrict) {
@@ -1536,9 +1790,9 @@ html_template = """<!DOCTYPE html>
         const layer = L.geoJSON(feat);
         const b = layer.getBounds();
         isSyncing = true;
-        mapRisk.fitBounds(b, { padding: [35, 35] });
-        mapBudget.fitBounds(b, { padding: [35, 35] });
-        mapGap.fitBounds(b, { padding: [35, 35] });
+        mapRisk.fitBounds(b, { padding: [30, 30] });
+        mapBudget.fitBounds(b, { padding: [30, 30] });
+        mapGap.fitBounds(b, { padding: [30, 30] });
         isSyncing = false;
       }
 
@@ -1574,8 +1828,8 @@ html_template = """<!DOCTYPE html>
       if (activePulseBudget) mapBudget.removeLayer(activePulseBudget);
       if (activePulseGap) mapGap.removeLayer(activePulseGap);
 
-      const pulseIcon = L.divIcon({ className: 'pulsing-beacon', iconSize: [22, 22], iconAnchor: [11, 11] });
-      const pulseIconGap = L.divIcon({ className: 'pulsing-beacon pulsing-beacon-gap', iconSize: [22, 22], iconAnchor: [11, 11] });
+      const pulseIcon = L.divIcon({ className: 'pulsing-beacon', iconSize: [20, 20], iconAnchor: [10, 10] });
+      const pulseIconGap = L.divIcon({ className: 'pulsing-beacon pulsing-beacon-gap', iconSize: [20, 20], iconAnchor: [10, 10] });
 
       activePulseRisk = L.marker([lat, lng], { icon: pulseIcon }).addTo(mapRisk);
       activePulseBudget = L.marker([lat, lng], { icon: pulseIcon }).addTo(mapBudget);
@@ -1597,64 +1851,66 @@ html_template = """<!DOCTYPE html>
 
       // Expanded Content: 5 Pillars Gap Matrix
       let bodyHtml = `
-        <div style="margin-bottom:10px; font-weight:700; color:#202124; font-size:0.82rem; display:flex; justify-content:space-between;">
+        <div style="margin-bottom:8px; font-weight:700; color:#202124; font-size:0.80rem; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
           <span>📊 สรุปความสอดคล้อง 5 มิติ แผนแม่บทน้ำ จ.เชียงใหม่ (2565-2570)</span>
-          <span style="color:#7c3aed; font-weight:600;">⚡ Gap Ratio รวม: 33.74 ลบ./จุดเสี่ยงสูง</span>
+          <span style="color:#7c3aed; font-weight:600;">⚡ Gap Ratio: 33.74 ลบ./จุดเสี่ยงสูง</span>
         </div>
-        <table class="gap-table">
-          <thead>
-            <tr>
-              <th>มิติแผนแม่บท (5 ด้าน)</th>
-              <th style="text-align:center;">จุดเสี่ยงสูง</th>
-              <th style="text-align:center;">จุดเฝ้าระวัง</th>
-              <th style="text-align:right;">จำนวนโครงการ</th>
-              <th style="text-align:right;">งบประมาณรวม</th>
-              <th style="text-align:center;">สถานะ Gap ความสอดคล้อง</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><b>💧 ด้าน 1: น้ำอุปโภคบริโภค</b></td>
-              <td style="text-align:center; color:#c5221f; font-weight:700;">39</td>
-              <td style="text-align:center;">522</td>
-              <td style="text-align:right;">721</td>
-              <td style="text-align:right; font-weight:700; color:#1a73e8;">2,266.62 ลบ.</td>
-              <td style="text-align:center;"><span class="dock-stat-pill pill-gap-green">🟢 สมดุลตามเกณฑ์</span></td>
-            </tr>
-            <tr>
-              <td><b>🌾 ด้าน 2: น้ำภาคการผลิต (เกษตร)</b></td>
-              <td style="text-align:center; color:#c5221f; font-weight:700;">142</td>
-              <td style="text-align:center;">1,231</td>
-              <td style="text-align:right;">2,349</td>
-              <td style="text-align:right; font-weight:700; color:#1a73e8;">23,454.85 ลบ.</td>
-              <td style="text-align:center;"><span class="dock-stat-pill pill-gap-blue">🔵 งบสูง (โครงการชลประทานหลัก)</span></td>
-            </tr>
-            <tr>
-              <td><b>🌊 ด้าน 3: น้ำท่วมและอุทกภัย</b></td>
-              <td style="text-align:center; color:#c5221f; font-weight:700;">180</td>
-              <td style="text-align:center;">1,116</td>
-              <td style="text-align:right;">356</td>
-              <td style="text-align:right; font-weight:700; color:#1a73e8;">4,391.91 ลบ.</td>
-              <td style="text-align:center;"><span class="dock-stat-pill pill-gap-orange">⚠️ เสี่ยงสูง - งบกระจุกตัวตัวเมือง</span></td>
-            </tr>
-            <tr>
-              <td><b>🧪 ด้าน 4: คุณภาพน้ำและอนุรักษ์</b></td>
-              <td style="text-align:center; color:#c5221f; font-weight:700;">188</td>
-              <td style="text-align:center;">846</td>
-              <td style="text-align:right;">2,774</td>
-              <td style="text-align:right; font-weight:700; color:#1a73e8;">4,131.87 ลบ.</td>
-              <td style="text-align:center;"><span class="dock-stat-pill pill-gap-green">🟢 สมดุลโครงการกระจายตัว</span></td>
-            </tr>
-            <tr>
-              <td><b>🌲 ด้าน 5: ฟื้นฟูป่าต้นน้ำและชะล้างดิน</b></td>
-              <td style="text-align:center; color:#c5221f; font-weight:700;">491</td>
-              <td style="text-align:center;">478</td>
-              <td style="text-align:right;">112</td>
-              <td style="text-align:right; font-weight:700; color:#1a73e8;">849.52 ลบ.</td>
-              <td style="text-align:center;"><span class="dock-stat-pill pill-gap-red">🚨 เสี่ยงสูงวิกฤติ - งบต่ำสุด (1.73 ลบ./จุด)</span></td>
-            </tr>
-          </tbody>
-        </table>
+        <div style="overflow-x:auto;">
+          <table class="gap-table">
+            <thead>
+              <tr>
+                <th>มิติแผนแม่บท (5 ด้าน)</th>
+                <th style="text-align:center;">จุดเสี่ยงสูง</th>
+                <th style="text-align:center;">จุดเฝ้าระวัง</th>
+                <th style="text-align:right;">โครงการ</th>
+                <th style="text-align:right;">งบประมาณรวม</th>
+                <th style="text-align:center;">สถานะ Gap</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>💧 ด้าน 1: น้ำอุปโภคบริโภค</b></td>
+                <td style="text-align:center; color:#c5221f; font-weight:700;">39</td>
+                <td style="text-align:center;">522</td>
+                <td style="text-align:right;">721</td>
+                <td style="text-align:right; font-weight:700; color:#1a73e8;">2,266.62 ลบ.</td>
+                <td style="text-align:center;"><span class="dock-stat-pill pill-gap-green">🟢 สมดุล</span></td>
+              </tr>
+              <tr>
+                <td><b>🌾 ด้าน 2: น้ำภาคเกษตร</b></td>
+                <td style="text-align:center; color:#c5221f; font-weight:700;">142</td>
+                <td style="text-align:center;">1,231</td>
+                <td style="text-align:right;">2,349</td>
+                <td style="text-align:right; font-weight:700; color:#1a73e8;">23,454.85 ลบ.</td>
+                <td style="text-align:center;"><span class="dock-stat-pill pill-gap-blue">🔵 งบสูง</span></td>
+              </tr>
+              <tr>
+                <td><b>🌊 ด้าน 3: น้ำท่วมและอุทกภัย</b></td>
+                <td style="text-align:center; color:#c5221f; font-weight:700;">180</td>
+                <td style="text-align:center;">1,116</td>
+                <td style="text-align:right;">356</td>
+                <td style="text-align:right; font-weight:700; color:#1a73e8;">4,391.91 ลบ.</td>
+                <td style="text-align:center;"><span class="dock-stat-pill pill-gap-orange">⚠️ เสี่ยงสูง</span></td>
+              </tr>
+              <tr>
+                <td><b>🧪 ด้าน 4: คุณภาพน้ำ/อนุรักษ์</b></td>
+                <td style="text-align:center; color:#c5221f; font-weight:700;">188</td>
+                <td style="text-align:center;">846</td>
+                <td style="text-align:right;">2,774</td>
+                <td style="text-align:right; font-weight:700; color:#1a73e8;">4,131.87 ลบ.</td>
+                <td style="text-align:center;"><span class="dock-stat-pill pill-gap-green">🟢 สมดุล</span></td>
+              </tr>
+              <tr>
+                <td><b>🌲 ด้าน 5: ฟื้นฟูป่าต้นน้ำ</b></td>
+                <td style="text-align:center; color:#c5221f; font-weight:700;">491</td>
+                <td style="text-align:center;">478</td>
+                <td style="text-align:right;">112</td>
+                <td style="text-align:right; font-weight:700; color:#1a73e8;">849.52 ลบ.</td>
+                <td style="text-align:center;"><span class="dock-stat-pill pill-gap-red">🚨 เสี่ยงสูงวิกฤติ</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       `;
       document.getElementById('dockExpandedBody').innerHTML = bodyHtml;
     }
@@ -1665,7 +1921,7 @@ html_template = """<!DOCTYPE html>
       const p = feat.properties;
 
       document.getElementById('dockBreadcrumbs').innerHTML = `
-        <span class="bc-item" onclick="resetToOverview()">📍 จ.เชียงใหม่</span>
+        <span class="bc-item" onclick="resetToOverview()">📍 เชียงใหม่</span>
         <span class="bc-separator">❯</span>
         <span class="bc-active">🏛️ อ.${p.amp_th}</span>
       `;
@@ -1673,57 +1929,59 @@ html_template = """<!DOCTYPE html>
       const gapClass = getGapBadgeClass(p.gap_status);
       document.getElementById('dockPillGap').className = `dock-stat-pill ${gapClass}`;
       document.getElementById('dockPillGap').textContent = p.gap_status || '🟢 สมดุล';
-      document.getElementById('dockPillRisk').textContent = `🔴 เสี่ยงสูง ${p.high_risk_total || 0} จุด (${p.villages || 0} หมู่บ้าน)`;
+      document.getElementById('dockPillRisk').textContent = `🔴 เสี่ยงสูง ${p.high_risk_total || 0} จุด`;
       const totalBudgetFormatted = Number(p.total_budget || 0).toLocaleString('th-TH', {maximumFractionDigits:1});
-      document.getElementById('dockPillBudget').textContent = `💰 ${totalBudgetFormatted} ลบ. (${p.total_projects || 0} โครงการ)`;
+      document.getElementById('dockPillBudget').textContent = `💰 ${totalBudgetFormatted} ลบ.`;
 
       let bodyHtml = `
-        <div style="margin-bottom:8px; font-weight:700; color:#202124; font-size:0.8rem; display:flex; justify-content:space-between;">
-          <span>🏛️ รายละเอียดความสอดคล้องรายมิติ อ.${p.amp_th} (งบเฉลี่ย ${Number(p.avg_budget_per_high || 0).toFixed(2)} ลบ./จุดเสี่ยงสูง)</span>
+        <div style="margin-bottom:6px; font-weight:700; color:#202124; font-size:0.78rem; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
+          <span>🏛️ รายละเอียดรายมิติ อ.${p.amp_th} (งบเฉลี่ย ${Number(p.avg_budget_per_high || 0).toFixed(2)} ลบ./จุด)</span>
           <span class="dock-stat-pill ${gapClass}">${p.gap_status || '🟢 สมดุล'}</span>
         </div>
-        <table class="gap-table">
-          <thead>
-            <tr>
-              <th>มิติแผนแม่บทน้ำ</th>
-              <th style="text-align:center;">จุดเสี่ยงสูง</th>
-              <th style="text-align:right;">โครงการ</th>
-              <th style="text-align:right;">งบประมาณจัดสรร</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>💧 ด้าน 1: น้ำอุปโภคบริโภค</td>
-              <td style="text-align:center; font-weight:700; color:${p.high_p1 > 0 ? '#c5221f' : '#202124'}">${p.high_p1 || 0}</td>
-              <td style="text-align:right;">${p.proj_p1 || 0}</td>
-              <td style="text-align:right; font-weight:600;">${Number(p.budget_p1 || 0).toFixed(2)} ลบ.</td>
-            </tr>
-            <tr>
-              <td>🌾 ด้าน 2: น้ำภาคเกษตร</td>
-              <td style="text-align:center; font-weight:700; color:${p.high_p2 > 0 ? '#c5221f' : '#202124'}">${p.high_p2 || 0}</td>
-              <td style="text-align:right;">${p.proj_p2 || 0}</td>
-              <td style="text-align:right; font-weight:600;">${Number(p.budget_p2 || 0).toFixed(2)} ลบ.</td>
-            </tr>
-            <tr>
-              <td>🌊 ด้าน 3: น้ำท่วมและอุทกภัย</td>
-              <td style="text-align:center; font-weight:700; color:${p.high_p3 > 0 ? '#c5221f' : '#202124'}">${p.high_p3 || 0}</td>
-              <td style="text-align:right;">${p.proj_p3 || 0}</td>
-              <td style="text-align:right; font-weight:600;">${Number(p.budget_p3 || 0).toFixed(2)} ลบ.</td>
-            </tr>
-            <tr>
-              <td>🧪 ด้าน 4: คุณภาพน้ำและการอนุรักษ์</td>
-              <td style="text-align:center; font-weight:700; color:${p.high_p4 > 0 ? '#c5221f' : '#202124'}">${p.high_p4 || 0}</td>
-              <td style="text-align:right;">${p.proj_p4 || 0}</td>
-              <td style="text-align:right; font-weight:600;">${Number(p.budget_p4 || 0).toFixed(2)} ลบ.</td>
-            </tr>
-            <tr>
-              <td>🌲 ด้าน 5: ฟื้นฟูป่าต้นน้ำและชะล้างดิน</td>
-              <td style="text-align:center; font-weight:700; color:${p.high_p5 > 0 ? '#c5221f' : '#202124'}">${p.high_p5 || 0}</td>
-              <td style="text-align:right;">${p.proj_p5 || 0}</td>
-              <td style="text-align:right; font-weight:600;">${Number(p.budget_p5 || 0).toFixed(2)} ลบ.</td>
-            </tr>
-          </tbody>
-        </table>
+        <div style="overflow-x:auto;">
+          <table class="gap-table">
+            <thead>
+              <tr>
+                <th>มิติแผนแม่บทน้ำ</th>
+                <th style="text-align:center;">จุดเสี่ยงสูง</th>
+                <th style="text-align:right;">โครงการ</th>
+                <th style="text-align:right;">งบประมาณ (ลบ.)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>💧 ด้าน 1: น้ำอุปโภคบริโภค</td>
+                <td style="text-align:center; font-weight:700; color:${p.high_p1 > 0 ? '#c5221f' : '#202124'}">${p.high_p1 || 0}</td>
+                <td style="text-align:right;">${p.proj_p1 || 0}</td>
+                <td style="text-align:right; font-weight:600;">${Number(p.budget_p1 || 0).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td>🌾 ด้าน 2: น้ำภาคเกษตร</td>
+                <td style="text-align:center; font-weight:700; color:${p.high_p2 > 0 ? '#c5221f' : '#202124'}">${p.high_p2 || 0}</td>
+                <td style="text-align:right;">${p.proj_p2 || 0}</td>
+                <td style="text-align:right; font-weight:600;">${Number(p.budget_p2 || 0).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td>🌊 ด้าน 3: น้ำท่วมและอุทกภัย</td>
+                <td style="text-align:center; font-weight:700; color:${p.high_p3 > 0 ? '#c5221f' : '#202124'}">${p.high_p3 || 0}</td>
+                <td style="text-align:right;">${p.proj_p3 || 0}</td>
+                <td style="text-align:right; font-weight:600;">${Number(p.budget_p3 || 0).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td>🧪 ด้าน 4: คุณภาพน้ำและอนุรักษ์</td>
+                <td style="text-align:center; font-weight:700; color:${p.high_p4 > 0 ? '#c5221f' : '#202124'}">${p.high_p4 || 0}</td>
+                <td style="text-align:right;">${p.proj_p4 || 0}</td>
+                <td style="text-align:right; font-weight:600;">${Number(p.budget_p4 || 0).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td>🌲 ด้าน 5: ฟื้นฟูป่าต้นน้ำ</td>
+                <td style="text-align:center; font-weight:700; color:${p.high_p5 > 0 ? '#c5221f' : '#202124'}">${p.high_p5 || 0}</td>
+                <td style="text-align:right;">${p.proj_p5 || 0}</td>
+                <td style="text-align:right; font-weight:600;">${Number(p.budget_p5 || 0).toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       `;
       document.getElementById('dockExpandedBody').innerHTML = bodyHtml;
     }
@@ -1734,54 +1992,56 @@ html_template = """<!DOCTYPE html>
       const p = feat.properties;
 
       document.getElementById('dockBreadcrumbs').innerHTML = `
-        <span class="bc-item" onclick="resetToOverview()">📍 จ.เชียงใหม่</span>
+        <span class="bc-item" onclick="resetToOverview()">📍 เชียงใหม่</span>
         <span class="bc-separator">❯</span>
-        <span class="bc-item" onclick="selectDistrict('${distName}')">🏛️ อ.${distName}</span>
+        <span class="bc-item" onclick="selectDistrict('${distName}')">อ.${distName}</span>
         <span class="bc-separator">❯</span>
-        <span class="bc-active">🏘️ ต.${subName}</span>
+        <span class="bc-active">ต.${subName}</span>
       `;
 
       const gapClass = getGapBadgeClass(p.gap_status);
       document.getElementById('dockPillGap').className = `dock-stat-pill ${gapClass}`;
       document.getElementById('dockPillGap').textContent = p.gap_status || '🟢 สมดุล';
-      document.getElementById('dockPillRisk').textContent = `🔴 เสี่ยงสูง ${p.high_risk_total || 0} จุด (${p.villages || 0} หมู่บ้าน)`;
+      document.getElementById('dockPillRisk').textContent = `🔴 เสี่ยงสูง ${p.high_risk_total || 0} จุด`;
       const subBudgetFormatted = Number(p.total_budget || 0).toFixed(2);
-      document.getElementById('dockPillBudget').textContent = `💰 ${subBudgetFormatted} ลบ. (${p.total_projects || 0} โครงการ)`;
+      document.getElementById('dockPillBudget').textContent = `💰 ${subBudgetFormatted} ลบ.`;
 
       let bodyHtml = `
-        <div style="margin-bottom:8px; font-weight:700; color:#202124; font-size:0.8rem; display:flex; justify-content:space-between;">
+        <div style="margin-bottom:6px; font-weight:700; color:#202124; font-size:0.78rem; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px;">
           <span>🏘️ สรุปรายมิติ ต.${subName} (อ.${distName})</span>
           <span class="dock-stat-pill ${gapClass}">${p.gap_status || '🟢 สมดุล'}</span>
         </div>
-        <table class="gap-table">
-          <thead>
-            <tr>
-              <th>มิติแผนแม่บทน้ำ</th>
-              <th style="text-align:center;">จุดเสี่ยงสูง</th>
-              <th style="text-align:right;">งบประมาณจัดสรร (ลบ.)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>💧 ด้าน 1: น้ำอุปโภคบริโภค</td><td style="text-align:center; font-weight:700;">${p.high_p1 || 0}</td><td style="text-align:right;">${Number(p.budget_p1 || 0).toFixed(2)}</td></tr>
-            <tr><td>🌾 ด้าน 2: น้ำภาคเกษตร</td><td style="text-align:center; font-weight:700;">${p.high_p2 || 0}</td><td style="text-align:right;">${Number(p.budget_p2 || 0).toFixed(2)}</td></tr>
-            <tr><td>🌊 ด้าน 3: น้ำท่วมและอุทกภัย</td><td style="text-align:center; font-weight:700;">${p.high_p3 || 0}</td><td style="text-align:right;">${Number(p.budget_p3 || 0).toFixed(2)}</td></tr>
-            <tr><td>🧪 ด้าน 4: คุณภาพน้ำและการอนุรักษ์</td><td style="text-align:center; font-weight:700;">${p.high_p4 || 0}</td><td style="text-align:right;">${Number(p.budget_p4 || 0).toFixed(2)}</td></tr>
-            <tr><td>🌲 ด้าน 5: ฟื้นฟูป่าต้นน้ำและชะล้างดิน</td><td style="text-align:center; font-weight:700;">${p.high_p5 || 0}</td><td style="text-align:right;">${Number(p.budget_p5 || 0).toFixed(2)}</td></tr>
-          </tbody>
-        </table>
+        <div style="overflow-x:auto;">
+          <table class="gap-table">
+            <thead>
+              <tr>
+                <th>มิติแผนแม่บทน้ำ</th>
+                <th style="text-align:center;">จุดเสี่ยงสูง</th>
+                <th style="text-align:right;">งบประมาณ (ลบ.)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>💧 ด้าน 1: น้ำอุปโภคบริโภค</td><td style="text-align:center; font-weight:700;">${p.high_p1 || 0}</td><td style="text-align:right;">${Number(p.budget_p1 || 0).toFixed(2)}</td></tr>
+              <tr><td>🌾 ด้าน 2: น้ำภาคเกษตร</td><td style="text-align:center; font-weight:700;">${p.high_p2 || 0}</td><td style="text-align:right;">${Number(p.budget_p2 || 0).toFixed(2)}</td></tr>
+              <tr><td>🌊 ด้าน 3: น้ำท่วมและอุทกภัย</td><td style="text-align:center; font-weight:700;">${p.high_p3 || 0}</td><td style="text-align:right;">${Number(p.budget_p3 || 0).toFixed(2)}</td></tr>
+              <tr><td>🧪 ด้าน 4: คุณภาพน้ำ/อนุรักษ์</td><td style="text-align:center; font-weight:700;">${p.high_p4 || 0}</td><td style="text-align:right;">${Number(p.budget_p4 || 0).toFixed(2)}</td></tr>
+              <tr><td>🌲 ด้าน 5: ฟื้นฟูป่าต้นน้ำ</td><td style="text-align:center; font-weight:700;">${p.high_p5 || 0}</td><td style="text-align:right;">${Number(p.budget_p5 || 0).toFixed(2)}</td></tr>
+            </tbody>
+          </table>
+        </div>
       `;
       document.getElementById('dockExpandedBody').innerHTML = bodyHtml;
     }
 
     function updateDockForVillage(p) {
       document.getElementById('dockBreadcrumbs').innerHTML = `
-        <span class="bc-item" onclick="resetToOverview()">📍 จ.เชียงใหม่</span>
+        <span class="bc-item" onclick="resetToOverview()">📍 เชียงใหม่</span>
         <span class="bc-separator">❯</span>
-        <span class="bc-item" onclick="selectDistrict('${p.district}')">🏛️ อ.${p.district}</span>
+        <span class="bc-item" onclick="selectDistrict('${p.district}')">อ.${p.district}</span>
         <span class="bc-separator">❯</span>
-        <span class="bc-item" onclick="selectSubdistrict('${p.district}', '${p.subdistrict}')">🏘️ ต.${p.subdistrict}</span>
+        <span class="bc-item" onclick="selectSubdistrict('${p.district}', '${p.subdistrict}')">ต.${p.subdistrict}</span>
         <span class="bc-separator">❯</span>
-        <span class="bc-active">🏡 ม.${p.village}</span>
+        <span class="bc-active">ม.${p.village}</span>
       `;
 
       document.getElementById('dockPillGap').className = 'dock-stat-pill pill-score';
@@ -1790,25 +2050,27 @@ html_template = """<!DOCTYPE html>
       document.getElementById('dockPillBudget').textContent = `🔴 เสี่ยงสูง ${p.high_count} | 🟡 กลาง ${p.med_count} | 🟢 น้อย ${p.low_count}`;
 
       let bodyHtml = `
-        <div style="margin-bottom:8px; font-weight:700; color:#202124; font-size:0.8rem;">
+        <div style="margin-bottom:6px; font-weight:700; color:#202124; font-size:0.78rem;">
           🏡 ผลประเมินความมั่นคงด้านน้ำ 5 มิติ: ม.${p.village} ต.${p.subdistrict} อ.${p.district}
         </div>
-        <table class="gap-table">
-          <thead>
-            <tr>
-              <th>มิติแผนแม่บทน้ำ</th>
-              <th style="text-align:center;">คะแนน (เต็ม 3)</th>
-              <th style="text-align:left;">ระดับความเสี่ยง</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>💧 ด้าน 1: น้ำอุปโภคบริโภค</td><td style="text-align:center; font-weight:700;">${p.p1_score}</td><td>${p.p1_text}</td></tr>
-            <tr><td>🌾 ด้าน 2: น้ำภาคเกษตร</td><td style="text-align:center; font-weight:700;">${p.p2_score}</td><td>${p.p2_text}</td></tr>
-            <tr><td>🌊 ด้าน 3: น้ำท่วมและอุทกภัย</td><td style="text-align:center; font-weight:700;">${p.p3_score}</td><td>${p.p3_text}</td></tr>
-            <tr><td>🧪 ด้าน 4: คุณภาพน้ำและการอนุรักษ์</td><td style="text-align:center; font-weight:700;">${p.p4_score}</td><td>${p.p4_text}</td></tr>
-            <tr><td>🌲 ด้าน 5: ฟื้นฟูป่าต้นน้ำและชะล้างดิน</td><td style="text-align:center; font-weight:700;">${p.p5_score}</td><td>${p.p5_text}</td></tr>
-          </tbody>
-        </table>
+        <div style="overflow-x:auto;">
+          <table class="gap-table">
+            <thead>
+              <tr>
+                <th>มิติแผนแม่บทน้ำ</th>
+                <th style="text-align:center;">คะแนน (เต็ม 3)</th>
+                <th style="text-align:left;">ระดับความเสี่ยง</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>💧 ด้าน 1: น้ำอุปโภคบริโภค</td><td style="text-align:center; font-weight:700;">${p.p1_score}</td><td>${p.p1_text}</td></tr>
+              <tr><td>🌾 ด้าน 2: น้ำภาคเกษตร</td><td style="text-align:center; font-weight:700;">${p.p2_score}</td><td>${p.p2_text}</td></tr>
+              <tr><td>🌊 ด้าน 3: น้ำท่วมและอุทกภัย</td><td style="text-align:center; font-weight:700;">${p.p3_score}</td><td>${p.p3_text}</td></tr>
+              <tr><td>🧪 ด้าน 4: คุณภาพน้ำและอนุรักษ์</td><td style="text-align:center; font-weight:700;">${p.p4_score}</td><td>${p.p4_text}</td></tr>
+              <tr><td>🌲 ด้าน 5: ฟื้นฟูป่าต้นน้ำ</td><td style="text-align:center; font-weight:700;">${p.p5_score}</td><td>${p.p5_text}</td></tr>
+            </tbody>
+          </table>
+        </div>
       `;
       document.getElementById('dockExpandedBody').innerHTML = bodyHtml;
     }
@@ -1818,7 +2080,7 @@ html_template = """<!DOCTYPE html>
       dock.classList.toggle('expanded');
       const isExp = dock.classList.contains('expanded');
       document.getElementById('expandIcon').textContent = isExp ? 'expand_more' : 'expand_less';
-      document.getElementById('expandText').textContent = isExp ? 'ย่อตาราง' : 'ดูตาราง Gap 5 มิติ';
+      document.getElementById('expandText').textContent = isExp ? 'ย่อตาราง' : 'ดูตาราง Gap';
     }
 
     function closeDock() {
@@ -1860,9 +2122,9 @@ html_template = """<!DOCTYPE html>
 
       isSyncing = true;
       if (cmBounds) {
-        mapRisk.fitBounds(cmBounds, { padding: [20, 20] });
-        mapBudget.fitBounds(cmBounds, { padding: [20, 20] });
-        mapGap.fitBounds(cmBounds, { padding: [20, 20] });
+        mapRisk.fitBounds(cmBounds, { padding: [15, 15] });
+        mapBudget.fitBounds(cmBounds, { padding: [15, 15] });
+        mapGap.fitBounds(cmBounds, { padding: [15, 15] });
       }
       isSyncing = false;
 
