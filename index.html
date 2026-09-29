@@ -1052,6 +1052,7 @@
 
     let mapRisk, mapBudget, mapGap;
     let districtLayersRisk = {}, districtLayersBudget = {}, districtLayersGap = {};
+    let subdistrictLayersRisk = {}, subdistrictLayersBudget = {}, subdistrictLayersGap = {};
     let subdistrictGroupRisk = null, subdistrictGroupBudget = null, subdistrictGroupGap = null;
     let villagePointsRisk = null, villagePointsBudget = null, villagePointsGap = null;
     
@@ -1322,6 +1323,55 @@
     }
 
     /* ========================================================= */
+    /* 3-WAY SYNCHRONIZED HOVER HIGHLIGHT (ACTIVE ACROSS 3 MAPS) */
+    /* ========================================================= */
+    function highlightDistrictHover(name, isHover) {
+      if (selectedDistrict !== 'all' && selectedDistrict !== name) return;
+      
+      const layer1 = districtLayersRisk[name];
+      const layer2 = districtLayersBudget[name];
+      const layer3 = districtLayersGap[name];
+
+      if (isHover) {
+        if (layer1) {
+          layer1.setStyle({ weight: 3.8, color: '#1a73e8', fillOpacity: 0.88 });
+          if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) layer1.bringToFront();
+        }
+        if (layer2) {
+          layer2.setStyle({ weight: 3.8, color: '#1a73e8', fillOpacity: 0.90 });
+          if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) layer2.bringToFront();
+        }
+        if (layer3) {
+          layer3.setStyle({ weight: 3.8, color: '#1a73e8', fillOpacity: 0.90 });
+          if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) layer3.bringToFront();
+        }
+      } else {
+        if (selectedDistrict === name) return; // Keep selected district highlighted
+        const isOverview = (selectedDistrict === 'all');
+        if (layer1) layer1.setStyle({ weight: 2.2, color: '#1e293b', fillOpacity: isOverview ? 0.65 : 0.20 });
+        if (layer2) layer2.setStyle({ weight: 2.2, color: '#1e293b', fillOpacity: isOverview ? 0.70 : 0.20 });
+        if (layer3) layer3.setStyle({ weight: 2.2, color: '#1e293b', fillOpacity: isOverview ? 0.75 : 0.20 });
+      }
+    }
+
+    function highlightSubdistrictHover(key, isHover) {
+      const l1 = subdistrictLayersRisk[key];
+      const l2 = subdistrictLayersBudget[key];
+      const l3 = subdistrictLayersGap[key];
+
+      if (isHover) {
+        if (l1) { l1.setStyle({ weight: 3.2, color: '#1a73e8', fillOpacity: 0.85 }); l1.bringToFront(); }
+        if (l2) { l2.setStyle({ weight: 3.2, color: '#1a73e8', fillOpacity: 0.85 }); l2.bringToFront(); }
+        if (l3) { l3.setStyle({ weight: 3.2, color: '#1a73e8', fillOpacity: 0.85 }); l3.bringToFront(); }
+      } else {
+        if (selectedSubdistrict !== 'all' && selectedSubdistrict === key.split('_')[1]) return;
+        if (l1) l1.setStyle({ weight: 1.5, color: '#334155', fillOpacity: 0.55 });
+        if (l2) l2.setStyle({ weight: 1.5, color: '#334155', fillOpacity: 0.60 });
+        if (l3) l3.setStyle({ weight: 1.5, color: '#334155', fillOpacity: 0.70 });
+      }
+    }
+
+    /* ========================================================= */
     /* RENDER ALL GIS LAYERS WITH PERMANENT ON-MAP LABELS        */
     /* ========================================================= */
     function renderAllLayers() {
@@ -1348,12 +1398,8 @@
             </div>
           `, { permanent: true, direction: 'center', className: 'custom-leaflet-tooltip' });
 
-          layer.on('mouseover', (e) => {
-            e.target.setStyle({ weight: 3.5, color: '#000000', fillOpacity: 0.85 });
-          });
-          layer.on('mouseout', (e) => {
-            distRiskLayer.resetStyle(e.target);
-          });
+          layer.on('mouseover', () => highlightDistrictHover(name, true));
+          layer.on('mouseout', () => highlightDistrictHover(name, false));
           layer.on('click', () => selectDistrict(name));
         }
       }).addTo(mapRisk);
@@ -1382,12 +1428,8 @@
             </div>
           `, { permanent: true, direction: 'center', className: 'custom-leaflet-tooltip' });
 
-          layer.on('mouseover', (e) => {
-            e.target.setStyle({ weight: 3.5, color: '#000000', fillOpacity: 0.85 });
-          });
-          layer.on('mouseout', (e) => {
-            distBudgetLayer.resetStyle(e.target);
-          });
+          layer.on('mouseover', () => highlightDistrictHover(name, true));
+          layer.on('mouseout', () => highlightDistrictHover(name, false));
           layer.on('click', () => selectDistrict(name));
         }
       }).addTo(mapBudget);
@@ -1416,12 +1458,8 @@
             </div>
           `, { permanent: true, direction: 'center', className: 'custom-leaflet-tooltip' });
 
-          layer.on('mouseover', (e) => {
-            e.target.setStyle({ weight: 3.5, color: '#000000', fillOpacity: 0.85 });
-          });
-          layer.on('mouseout', (e) => {
-            distGapLayer.resetStyle(e.target);
-          });
+          layer.on('mouseover', () => highlightDistrictHover(name, true));
+          layer.on('mouseout', () => highlightDistrictHover(name, false));
           layer.on('click', () => selectDistrict(name));
         }
       }).addTo(mapGap);
@@ -1439,7 +1477,11 @@
         }),
         onEachFeature: (feature, layer) => {
           const p = feature.properties;
+          const key = `${p.amp_th}_${p.tam_th}`;
+          subdistrictLayersRisk[key] = layer;
           layer.bindTooltip(`<b>ต.${p.tam_th}</b> (อ.${p.amp_th})<br>เสี่ยงสูง ${p.high_risk_total || 0} จุด`, { direction: 'center' });
+          layer.on('mouseover', () => highlightSubdistrictHover(key, true));
+          layer.on('mouseout', () => highlightSubdistrictHover(key, false));
           layer.on('click', () => selectSubdistrict(p.amp_th, p.tam_th));
         }
       });
@@ -1454,8 +1496,12 @@
         }),
         onEachFeature: (feature, layer) => {
           const p = feature.properties;
+          const key = `${p.amp_th}_${p.tam_th}`;
+          subdistrictLayersBudget[key] = layer;
           const bgText = Number(p.total_budget || 0).toLocaleString('th-TH', {maximumFractionDigits:1});
           layer.bindTooltip(`<b>ต.${p.tam_th}</b><br>${bgText} ลบ.`, { direction: 'center' });
+          layer.on('mouseover', () => highlightSubdistrictHover(key, true));
+          layer.on('mouseout', () => highlightSubdistrictHover(key, false));
           layer.on('click', () => selectSubdistrict(p.amp_th, p.tam_th));
         }
       });
@@ -1470,8 +1516,12 @@
         }),
         onEachFeature: (feature, layer) => {
           const p = feature.properties;
+          const key = `${p.amp_th}_${p.tam_th}`;
+          subdistrictLayersGap[key] = layer;
           const status = p.gap_status || '🟢 สมดุล';
           layer.bindTooltip(`<b>ต.${p.tam_th}</b><br>${status.split(' - ')[0]}`, { direction: 'center' });
+          layer.on('mouseover', () => highlightSubdistrictHover(key, true));
+          layer.on('mouseout', () => highlightSubdistrictHover(key, false));
           layer.on('click', () => selectSubdistrict(p.amp_th, p.tam_th));
         }
       });
@@ -1667,6 +1717,30 @@
       document.getElementById('districtSelect').value = name;
       updateSubdistrictDropdown(name);
       updateVillageDropdown(name, 'all');
+
+      // Highlight selected district across all 3 maps
+      Object.keys(districtLayersRisk).forEach(dName => {
+        const isTarget = (name === 'all' || dName === name);
+        const l1 = districtLayersRisk[dName];
+        const l2 = districtLayersBudget[dName];
+        const l3 = districtLayersGap[dName];
+
+        if (l1) l1.setStyle({
+          weight: (dName === name) ? 3.8 : 1.2,
+          color: (dName === name) ? '#1a73e8' : '#64748b',
+          fillOpacity: isTarget ? 0.75 : 0.20
+        });
+        if (l2) l2.setStyle({
+          weight: (dName === name) ? 3.8 : 1.2,
+          color: (dName === name) ? '#1a73e8' : '#64748b',
+          fillOpacity: isTarget ? 0.80 : 0.20
+        });
+        if (l3) l3.setStyle({
+          weight: (dName === name) ? 3.8 : 1.2,
+          color: (dName === name) ? '#1a73e8' : '#64748b',
+          fillOpacity: isTarget ? 0.82 : 0.20
+        });
+      });
 
       // Zoom to district bounds
       const layer = districtLayersRisk[name];
@@ -2036,6 +2110,16 @@
         mapBudget.removeLayer(subdistrictGroupBudget);
         mapGap.removeLayer(subdistrictGroupGap);
       }
+
+      // Reset all district polygons across all 3 maps
+      Object.keys(districtLayersRisk).forEach(dName => {
+        const l1 = districtLayersRisk[dName];
+        const l2 = districtLayersBudget[dName];
+        const l3 = districtLayersGap[dName];
+        if (l1) l1.setStyle({ weight: 2.2, color: '#1e293b', fillOpacity: 0.65 });
+        if (l2) l2.setStyle({ weight: 2.2, color: '#1e293b', fillOpacity: 0.70 });
+        if (l3) l3.setStyle({ weight: 2.2, color: '#1e293b', fillOpacity: 0.75 });
+      });
 
       isSyncing = true;
       if (cmBounds) {
