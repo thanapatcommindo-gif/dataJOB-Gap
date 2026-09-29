@@ -4,9 +4,10 @@
 Generate Triple Synchronized GIS Dashboard with Gap Analysis for Chiang Mai Water Master Plan
 Features:
   - 3 Synchronized Maps: Risk (5 Pillars), Budget (65-70), and Gap Analysis
+  - Permanent On-Map District Labels with Live Risk Counts and Budget (แบบดั้งเดิม)
   - Toggle Village Pins Button (default OFF to keep overview clean & comfortable)
-  - Crisp District Boundaries (คมชัด แยกชัดเจน 25 อำเภอ พร้อมป้ายชื่ออำเภอ)
-  - Google Maps Base Layers with Roadmap & Terrain
+  - Crisp District Boundaries (เส้นขอบชัดเจน แยก 25 อำเภอ)
+  - Google Maps Base Layers
 """
 
 import json
@@ -392,24 +393,64 @@ html_template = """<!DOCTYPE html>
       background: #e5e3df;
     }
 
-    /* District Labels on Map */
-    .district-label-card {
-      background: rgba(255, 255, 255, 0.88);
-      border: 1px solid rgba(0, 0, 0, 0.15);
-      border-radius: 6px;
-      padding: 2px 6px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      color: #1e293b;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    /* ========================================================= */
+    /* CUSTOM ON-MAP TEXT LABELS (แบบดั้งเดิม คมชัด สวยงาม)       */
+    /* ========================================================= */
+    .custom-leaflet-tooltip {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+    }
+    .onmap-label-risk, .onmap-label-budget, .onmap-label-gap {
       text-align: center;
-      white-space: nowrap;
       pointer-events: none;
     }
-    .district-sublabel {
-      font-size: 0.62rem;
-      font-weight: 500;
-      color: #64748b;
+    .onmap-label-risk .dname, .onmap-label-budget .dname, .onmap-label-gap .dname {
+      font-weight: 700;
+      font-size: 11.5px;
+      color: #111827;
+      text-shadow: 1.5px 1.5px 3px #ffffff, -1.5px -1.5px 3px #ffffff, 1.5px -1.5px 3px #ffffff, -1.5px 1.5px 3px #ffffff;
+      line-height: 1.1;
+    }
+    .onmap-label-risk .dstat {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: #b71c1c;
+      background: rgba(255, 255, 255, 0.94);
+      padding: 1px 6px;
+      border-radius: 10px;
+      border: 1px solid rgba(183, 28, 28, 0.35);
+      display: inline-block;
+      margin-top: 1px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.14);
+      white-space: nowrap;
+    }
+    .onmap-label-budget .dstat {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: #0d47a1;
+      background: rgba(255, 255, 255, 0.94);
+      padding: 1px 6px;
+      border-radius: 10px;
+      border: 1px solid rgba(13, 71, 161, 0.35);
+      display: inline-block;
+      margin-top: 1px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.14);
+      white-space: nowrap;
+    }
+    .onmap-label-gap .dstat {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: #6b21a8;
+      background: rgba(255, 255, 255, 0.94);
+      padding: 1px 6px;
+      border-radius: 10px;
+      border: 1px solid rgba(107, 33, 168, 0.35);
+      display: inline-block;
+      margin-top: 1px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.14);
+      white-space: nowrap;
     }
 
     /* Floating Map Headers / Badges */
@@ -1054,19 +1095,33 @@ html_template = """<!DOCTYPE html>
     /* ========================================================= */
     /* COLOR SCHEMES & GAP STYLING                               */
     /* ========================================================= */
-    function getDistrictRiskColor(highRiskCount) {
-      if (highRiskCount >= 100) return '#b71c1c';
-      if (highRiskCount >= 50) return '#e53935';
-      if (highRiskCount >= 20) return '#fb8c00';
-      if (highRiskCount >= 5) return '#fdd835';
+    function getDistrictRiskColor(p) {
+      let count = p.high_risk_total || 0;
+      if (selectedPillar === '1') count = p.high_p1 || 0;
+      else if (selectedPillar === '2') count = p.high_p2 || 0;
+      else if (selectedPillar === '3') count = p.high_p3 || 0;
+      else if (selectedPillar === '4') count = p.high_p4 || 0;
+      else if (selectedPillar === '5') count = p.high_p5 || 0;
+
+      if (count >= 70) return '#b71c1c';
+      if (count >= 40) return '#e53935';
+      if (count >= 20) return '#fb8c00';
+      if (count >= 10) return '#fdd835';
       return '#43a047';
     }
 
-    function getDistrictBudgetColor(budget) {
-      if (budget >= 3000) return '#0d47a1';
-      if (budget >= 1500) return '#1976d2';
-      if (budget >= 800) return '#42a5f5';
-      if (budget >= 400) return '#90caf9';
+    function getDistrictBudgetColor(p) {
+      let b = p.total_budget || 0;
+      if (selectedPillar === '1') b = p.budget_p1 || 0;
+      else if (selectedPillar === '2') b = p.budget_p2 || 0;
+      else if (selectedPillar === '3') b = p.budget_p3 || 0;
+      else if (selectedPillar === '4') b = p.budget_p4 || 0;
+      else if (selectedPillar === '5') b = p.budget_p5 || 0;
+
+      if (b >= 3000) return '#0d47a1';
+      if (b >= 1500) return '#1976d2';
+      if (b >= 800) return '#42a5f5';
+      if (b >= 400) return '#90caf9';
       return '#e3f2fd';
     }
 
@@ -1096,27 +1151,31 @@ html_template = """<!DOCTYPE html>
     }
 
     /* ========================================================= */
-    /* RENDER ALL GIS LAYERS WITH CLEAR DISTRICT BOUNDARIES     */
+    /* RENDER ALL GIS LAYERS WITH PERMANENT ON-MAP LABELS        */
     /* ========================================================= */
     function renderAllLayers() {
-      // 1. DISTRICTS LAYER WITH DISTINCT BOUNDARY OUTLINES
+      // 1. DISTRICTS LAYER (Left Map: Risk)
       const distRiskLayer = L.geoJSON(DISTRICTS_DATA, {
         style: (feature) => ({
-          fillColor: getDistrictRiskColor(feature.properties.high_risk_total || 0),
+          fillColor: getDistrictRiskColor(feature.properties),
           fillOpacity: 0.65,
           color: '#1e293b', // Crisp Solid Dark Boundary Outline
           weight: 2.2,
           opacity: 0.95
         }),
         onEachFeature: (feature, layer) => {
-          const name = feature.properties.amp_th;
+          const p = feature.properties;
+          const name = p.amp_th;
           districtLayersRisk[name] = layer;
+          const highCount = p.high_risk_total || 0;
           
-          // District Name Badge
-          layer.bindTooltip(
-            `<div class="district-label-card"><b>อ.${name}</b><div class="district-sublabel">เสี่ยงสูง ${feature.properties.high_risk_total || 0} จุด</div></div>`,
-            { permanent: false, direction: 'center', opacity: 0.95 }
-          );
+          // PERMANENT ON-MAP BADGE LABEL (District Name + Risk Count Pill)
+          layer.bindTooltip(`
+            <div class="onmap-label-risk">
+              <div class="dname">${name}</div>
+              <div class="dstat">🔴 ${highCount} จุดเสี่ยง</div>
+            </div>
+          `, { permanent: true, direction: 'center', className: 'custom-leaflet-tooltip' });
 
           layer.on('mouseover', (e) => {
             e.target.setStyle({ weight: 3.5, color: '#000000', fillOpacity: 0.85 });
@@ -1128,23 +1187,29 @@ html_template = """<!DOCTYPE html>
         }
       }).addTo(mapRisk);
 
+      // 2. DISTRICTS LAYER (Center Map: Budget)
       const distBudgetLayer = L.geoJSON(DISTRICTS_DATA, {
         style: (feature) => ({
-          fillColor: getDistrictBudgetColor(feature.properties.total_budget || 0),
+          fillColor: getDistrictBudgetColor(feature.properties),
           fillOpacity: 0.7,
           color: '#1e293b', // Crisp Solid Dark Boundary Outline
           weight: 2.2,
           opacity: 0.95
         }),
         onEachFeature: (feature, layer) => {
-          const name = feature.properties.amp_th;
+          const p = feature.properties;
+          const name = p.amp_th;
           districtLayersBudget[name] = layer;
-          const bgText = Number(feature.properties.total_budget || 0).toLocaleString('th-TH', {maximumFractionDigits:1});
+          const budgetM = Number(p.total_budget || 0).toLocaleString('th-TH', {maximumFractionDigits:1});
+          const projCount = p.total_projects || 0;
           
-          layer.bindTooltip(
-            `<div class="district-label-card"><b>อ.${name}</b><div class="district-sublabel">${bgText} ลบ. (${feature.properties.total_projects || 0} โครงการ)</div></div>`,
-            { permanent: false, direction: 'center', opacity: 0.95 }
-          );
+          // PERMANENT ON-MAP BADGE LABEL (District Name + Budget & Projects Pill)
+          layer.bindTooltip(`
+            <div class="onmap-label-budget">
+              <div class="dname">${name}</div>
+              <div class="dstat">💰 ${budgetM} ลบ. (${projCount} โครงการ)</div>
+            </div>
+          `, { permanent: true, direction: 'center', className: 'custom-leaflet-tooltip' });
 
           layer.on('mouseover', (e) => {
             e.target.setStyle({ weight: 3.5, color: '#000000', fillOpacity: 0.85 });
@@ -1156,6 +1221,7 @@ html_template = """<!DOCTYPE html>
         }
       }).addTo(mapBudget);
 
+      // 3. DISTRICTS LAYER (Right Map: Gap)
       const distGapLayer = L.geoJSON(DISTRICTS_DATA, {
         style: (feature) => ({
           fillColor: getGapColor(feature.properties.gap_status),
@@ -1165,14 +1231,19 @@ html_template = """<!DOCTYPE html>
           opacity: 0.95
         }),
         onEachFeature: (feature, layer) => {
-          const name = feature.properties.amp_th;
+          const p = feature.properties;
+          const name = p.amp_th;
           districtLayersGap[name] = layer;
-          const status = feature.properties.gap_status || '🟢 สมดุล';
+          const status = p.gap_status || '🟢 สมดุล';
+          const shortStatus = status.split(' - ')[0];
           
-          layer.bindTooltip(
-            `<div class="district-label-card"><b>อ.${name}</b><div class="district-sublabel">${status.split(' - ')[0]}</div></div>`,
-            { permanent: false, direction: 'center', opacity: 0.95 }
-          );
+          // PERMANENT ON-MAP BADGE LABEL (District Name + Gap Status Pill)
+          layer.bindTooltip(`
+            <div class="onmap-label-gap">
+              <div class="dname">${name}</div>
+              <div class="dstat">${shortStatus}</div>
+            </div>
+          `, { permanent: true, direction: 'center', className: 'custom-leaflet-tooltip' });
 
           layer.on('mouseover', (e) => {
             e.target.setStyle({ weight: 3.5, color: '#000000', fillOpacity: 0.85 });
@@ -1186,10 +1257,10 @@ html_template = """<!DOCTYPE html>
 
       cmBounds = distRiskLayer.getBounds();
 
-      // 2. SUBDISTRICTS LAYER GROUP (Clean dashed boundary when zooming)
+      // 4. SUBDISTRICTS LAYER GROUP (Clean dashed boundary when zooming)
       subdistrictGroupRisk = L.geoJSON(SUBDISTRICTS_DATA, {
         style: (feature) => ({
-          fillColor: getDistrictRiskColor(feature.properties.high_risk_total || 0),
+          fillColor: getDistrictRiskColor(feature.properties),
           fillOpacity: 0.55,
           color: '#334155',
           weight: 1.5,
@@ -1204,7 +1275,7 @@ html_template = """<!DOCTYPE html>
 
       subdistrictGroupBudget = L.geoJSON(SUBDISTRICTS_DATA, {
         style: (feature) => ({
-          fillColor: getDistrictBudgetColor(feature.properties.total_budget || 0),
+          fillColor: getDistrictBudgetColor(feature.properties),
           fillOpacity: 0.6,
           color: '#334155',
           weight: 1.5,
@@ -1234,8 +1305,47 @@ html_template = """<!DOCTYPE html>
         }
       });
 
-      // 3. VILLAGES PINS LAYER (Controlled by showVillages flag)
+      // 5. VILLAGES PINS LAYER (Controlled by showVillages flag)
       renderVillagePins();
+    }
+
+    function updateOnMapLabels() {
+      for (const [name, layer] of Object.entries(districtLayersRisk)) {
+        const p = layer.feature.properties;
+        let count = p.high_risk_total || 0;
+        if (selectedPillar === '1') count = p.high_p1 || 0;
+        else if (selectedPillar === '2') count = p.high_p2 || 0;
+        else if (selectedPillar === '3') count = p.high_p3 || 0;
+        else if (selectedPillar === '4') count = p.high_p4 || 0;
+        else if (selectedPillar === '5') count = p.high_p5 || 0;
+
+        layer.setTooltipContent(`
+          <div class="onmap-label-risk">
+            <div class="dname">${name}</div>
+            <div class="dstat">🔴 ${count} จุดเสี่ยง</div>
+          </div>
+        `);
+        layer.setStyle({ fillColor: getDistrictRiskColor(p) });
+      }
+
+      for (const [name, layer] of Object.entries(districtLayersBudget)) {
+        const p = layer.feature.properties;
+        let b = p.total_budget || 0;
+        let projs = p.total_projects || 0;
+        if (selectedPillar === '1') { b = p.budget_p1 || 0; projs = p.proj_p1 || 0; }
+        else if (selectedPillar === '2') { b = p.budget_p2 || 0; projs = p.proj_p2 || 0; }
+        else if (selectedPillar === '3') { b = p.budget_p3 || 0; projs = p.proj_p3 || 0; }
+        else if (selectedPillar === '4') { b = p.budget_p4 || 0; projs = p.proj_p4 || 0; }
+        else if (selectedPillar === '5') { b = p.budget_p5 || 0; projs = p.proj_p5 || 0; }
+
+        layer.setTooltipContent(`
+          <div class="onmap-label-budget">
+            <div class="dname">${name}</div>
+            <div class="dstat">💰 ${Number(b).toLocaleString('th-TH', { maximumFractionDigits: 1 })} ลบ. (${projs} โครงการ)</div>
+          </div>
+        `);
+        layer.setStyle({ fillColor: getDistrictBudgetColor(p) });
+      }
     }
 
     function toggleVillagePins() {
@@ -1759,6 +1869,7 @@ html_template = """<!DOCTYPE html>
       document.getElementById('floatingBackBar').style.display = 'none';
       document.getElementById('smartDock').style.display = 'block';
       updateDockForOverview();
+      updateOnMapLabels();
       renderVillagePins();
     }
 
@@ -1810,6 +1921,7 @@ html_template = """<!DOCTYPE html>
 
     function handlePillarSelect(val) {
       selectedPillar = val;
+      updateOnMapLabels();
       renderVillagePins();
     }
 
